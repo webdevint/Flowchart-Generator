@@ -1,0 +1,1405 @@
+<!DOCTYPE html>
+<html lang="en-US">
+	<head>
+		<meta charset="UTF-8"> 
+		<style>
+			body,svg
+			{
+				margin: 0px;
+			}
+		</style>
+		<script>
+			// Creates an svg string representing the Logic Flowchart designed by the user.
+			// This code was developed using Firefox Nightly 65.0a1 (2018-10-25) (64-bit) and later.
+			//
+			// Wayne M. Ayotte
+			// Web Developers International: webdevint.com: projects/the usual marker/webdevint.com
+			// November, 2018.
+		</script>
+		<script src="XMLFormat.js" async="false" type="text/javascript"></script>
+		<script>
+			// Javascript routines to draw. preview and save an SVG logic flowchart.
+			//	XMLFormat.js takes the current design and formats the resulting svg string for readability during the 'preview' process, which can then be saved for future use.
+			//
+			// The window (panel) is visualised as containing 35 cells of equal size.
+			// The height of our graph is set at 8.5 in. wide by 11 in. high. - letter size.
+			// Each SVG graph has a 5 X 7 set of 104 X 104 px squares (cells). (displayed by Firefox's tool kit)
+			// Each symbol cell is drawn around a fixed stroke length of 96 px: 2 lengths of 48, where 48px is chosen as our arbitrary unit length, and a 2px stroke width, thus
+			// 	plus a vertical gap of 48px and .5 * 2 * 48 = 48px horizontally.
+			// Symbols are drawn from a given anchor point (M) with a fixed unit stroke length used to determine all other points; for example, the distance horizontally or vertically, but not diagonally, between points is a unit of g_StdUnitLength, defined below.
+			//		thus each symbol must fit within a column and leave room for flow lines and arrows. 
+			//		It seems that we can print 5 * 7 symbols per standard letter page before needing a form feed.
+			// We can think of our graph as having 5 X 7 cells with an x,y (column, row) type addressing: top left cell being 0,0 and bottom right cell being 4,6.
+			// We can choose an appropriate starting column's center to begin drawing our graph, such as cell 1,0 (column,row), leaving room for symbols on the left and right side of our initial symbol.
+			// When a function is called to create a symbol's node, it will also calculate and store properties for that symbol, such as
+			//		starting co-ordinates; the co-ordinates of the center points of each "side" etc.
+			//
+			// This section/script contains the code to construct the required graphics
+			//
+			// GLOBALS with initial values and immediate code:
+			var g_strSVGNS = 'http://www.w3.org/2000/svg';	// SVG namespace
+			var g_strInch = 'in';	// length unit - linear dimension
+			var g_intSVG_height = 11;	// arbitrary height of a panel in inches
+			var g_intSVG_width = 8.5;		// arbitrary width of a panel in inches
+			var g_strStroke = '#000000';	// black
+			var g_intStroke_width = 2;	
+			var g_StrokeFill = '#000000';	
+			var g_strFill = '#FFFFFF';	
+			var g_strFontSize = 12;	
+			var g_FontWidthRatio = 1.618;	// the default horizontal space factor assigned to a text character.
+			var g_FontLineHeightRatio = 1.4; // the default line height assigned to a text graph.
+			var g_strFontFamily =  " \"Courier New\", Courier, monospace; ";
+			var g_intFontWeight = 200;
+			var g_StdUnitLength = 48;	// a base length used in defining our graph symbols: all symbol dimensions are based on this value or multiple/fraction thereof.
+			var g_intStdStrokeLen = 2 * g_StdUnitLength;	// arbitrary stroke length
+			var g_intColumnWidth = 2 * g_StdUnitLength;	// keeping the height and width as a square cell within which to draw the symbol - boundary.
+			var g_intRowHeight = 2 * g_StdUnitLength;		// ditto	
+			var g_intGap = g_StdUnitLength;	// value used to allow for space around the graph symbols.
+			var g_intMaxCols = 5;
+			var g_intMaxRows = 7;
+			var g_arr_objSVGChildObjects = [];	// an array within which each index points to an object whose properties describe the constructed symbol's group node and children.
+			var g_arrColumnCenters = [];	// used to store the horizontal pixel offset values from origin 0 that indicates the horizontal center of the symbol's square (cell).		
+			var g_intHypotenuseFactor = Math.sqrt(2);		// length factor used to calculate the hypotenuse for the decision symbol, if required: currently unused.
+			// calculate and store the horizontal cell centers.
+			for(var i=0;i<6;i++)
+			{
+				g_arrColumnCenters.push( ( (1 + i) + (.5*i)) * g_intColumnWidth);	// cell + gap
+			}
+			var g_intLineID = 0;	// used as a unique id for flow lines.
+			//
+			// for the HTML script
+			//
+			var g_objFunctionsForComponents = {};	// an object whose properties point to the particular function that constructs the required symbol.
+			var g_nodeSVG = null;	// points to the root svg node.
+			var g_arr_objCellOrigins = {};	// an associative array with index of the form 'col,row', of objects whose properties (col,row) point to the top center of the cell.
+			var g_strMarkedCell = '';	// holds the address of the current marked cell, if any.
+			var g_nodeDrawGroup = null;	// points to the svg node that requires pretty formatting.			
+			var g_pt = null;	// address of the top left point within the svg space.
+			var g_objOutputWindow = null;	// current address of an opened window
+			// close all opened windows, if any, when closing this window: clean up.
+			this.window.addEventListener("unload", function (e) 
+			{
+				if ( g_objOutputWindow !== null && typeof g_objOutputWindow == "object")
+				{
+					g_objOutputWindow.close();
+				}
+			});	
+			//			
+			// End of Globals/Immediate code
+			//
+			// Constructors 
+			function fncNodeSVG()
+			{
+				// create an SVG node to house our symbols
+				var nodeSVG = document.createElementNS('http://www.w3.org/2000/svg','svg');
+				nodeSVG.setAttribute('id', 'idSVGPanel');
+				nodeSVG.setAttribute('width', g_intSVG_width + g_strInch);	// 8.5 in.
+				nodeSVG.setAttribute('height',  g_intSVG_height  + g_strInch); // 11 in.
+				// the following are optional:
+				// g_nodeSVG.setAttribute('viewBox', '0 0 100 100');
+				// g_nodeSVG.setAttributeNS('http://www.w3.org/2000/svg','xlink','http://www.w3.org/1999/xlink');
+				// g_nodeSVG.setAttribute('preserveAspectRatio', 'xMinYMin meet');
+				// nodeSVG.setAttribute('overflow', 'visible');
+				// g_nodeSVG.setAttribute('transform', 'scale(2)');
+				// g_nodeSVG.setAttribute('transform', 'translate(100,100) scale(1.2)');	// this works: allows scaling and inserts scroll bars if necessary, whereas viewbox does not.
+				
+				var nodeDefsGroup1 = document.createElementNS(g_strSVGNS, "g");
+					nodeDefsGroup1.setAttribute('id', 'id_DefsGroup1');
+				// append an arrowhead def for the flow lines
+				var nodeDefs = document.createElementNS('http://www.w3.org/2000/svg','defs');
+				var nodeMarker = document.createElementNS('http://www.w3.org/2000/svg','marker');
+					nodeMarker.setAttribute('id', 'arrowhead');
+					nodeMarker.setAttribute('markerWidth', '10');
+					nodeMarker.setAttribute('markerHeight', '7');
+					nodeMarker.setAttribute('refX', '0');
+					nodeMarker.setAttribute('refY', '3.5');
+					nodeMarker.setAttribute('orient', 'auto');
+				var nodePolygon = document.createElementNS('http://www.w3.org/2000/svg','polygon');
+					nodePolygon.setAttribute('points', '0 0, 10 3.5, 0 7');
+					nodePolygon.setAttribute('fill', '#000000');
+					nodePolygon.setAttribute('stroke-width', '0');	// no stroke
+				nodeMarker.appendChild(nodePolygon);
+				nodeDefs.appendChild(nodeMarker);
+				nodeDefsGroup1.appendChild(nodeDefs);
+				nodeSVG.appendChild(nodeDefsGroup1);
+				
+				var nodeDefsGroup2 = document.createElementNS(g_strSVGNS, "g");
+					nodeDefsGroup2.setAttribute('id', 'id_DefsGroup2');
+				var nodeDefs = document.createElementNS('http://www.w3.org/2000/svg','defs');
+				// append a rect def as the selected cell border marker
+				var nodeRect = document.createElementNS(g_strSVGNS, "rect");
+					nodeRect.setAttribute('id', 'cellMarker');
+					nodeRect.setAttribute('height', g_intGap + (2*g_StdUnitLength)); 	// + g_intGap	 
+					nodeRect.setAttribute('width', g_intGap + (2*g_StdUnitLength));  // + g_intGap 
+					nodeRect.setAttribute('stroke', '#808080');
+					nodeRect.setAttribute('stroke-width', g_intStroke_width);
+					nodeRect.setAttribute('fill', 'currentColor');	// g_strFill
+					nodeRect.setAttribute('fill-opacity', '0.0');
+				nodeDefs.appendChild(nodeRect);
+				nodeDefsGroup2.appendChild(nodeDefs);
+				nodeSVG.appendChild(nodeDefsGroup2);
+				
+				// create the Grid - the outline for the cells
+				var nodeRectGroup = document.createElementNS(g_strSVGNS, "g");
+					nodeRectGroup.setAttribute('id', 'id_SVGGrid');
+				for (var intRow=0;intRow<g_intMaxRows;intRow++)
+				{
+					for (var intCol=0;intCol<g_intMaxCols;intCol++)
+					{
+						var intX = intCol * (g_intGap + (2*g_StdUnitLength)) + .5*g_StdUnitLength;
+						var intY = intRow * (g_intGap + (2*g_StdUnitLength)) + .5*g_StdUnitLength;
+						var nodeRect = document.createElementNS(g_strSVGNS, "rect");
+							nodeRect.setAttribute('class', 'grid');
+							nodeRect.setAttribute('height', g_intGap + (2*g_StdUnitLength)); 	// + g_intGap	 
+							nodeRect.setAttribute('width', g_intGap + (2*g_StdUnitLength));  // + g_intGap 
+							nodeRect.setAttribute('x', intX);
+							nodeRect.setAttribute('y', intY);
+							nodeRect.setAttribute('stroke', '#808080');
+							nodeRect.setAttribute('stroke-width', g_intStroke_width);
+							nodeRect.setAttribute('stroke-linecap', 'round');
+							nodeRect.setAttribute('fill', g_strFill);
+							nodeRect.setAttribute('stroke-dasharray', '6,6');
+							nodeRect.setAttribute('stroke-dashoffset', '3');
+							nodeRect.setAttribute('stroke-opacity', '0.1');
+							// Outline the cell the mouse is in.
+							nodeRect.addEventListener('mousemove',function(evt)
+							{
+								// show the outline
+								evt.target.setAttribute('fill-opacity', '0.1');
+								evt.target.setAttribute('fill', '#808080');
+								evt.target.nextElementSibling.setAttribute('style', 'display: inline; font-family: ' + g_strFontFamily + '; font-size: 18px; stroke: #808080; fill:  #808080; fill-opacity: 0.3; stroke-opacity: 0.3;');
+							},false);
+							nodeRect.addEventListener('mouseout',function(evt)
+							{
+								// hide the outline
+								evt.target.setAttribute('fill-opacity', '1');
+								evt.target.setAttribute('fill', g_strFill);
+								evt.target.nextElementSibling.setAttribute('style','display: none');
+							},false);
+						// add the cell identifier (col,row) at the anchor point: text baseline.
+						nodeRectGroup.appendChild(nodeRect);
+						nodeTextLineT = document.createElementNS(g_strSVGNS, "text");
+							nodeTextLineT.setAttribute('x', intX);
+							nodeTextLineT.setAttribute('y', intY);
+							nodeTextLineT.setAttribute('style', 'display: none;');
+							nodeTextLineT.textContent = intCol + ',' + intRow;
+						nodeRectGroup.appendChild(nodeTextLineT);												
+					}
+				}				
+				nodeSVG.appendChild(nodeRectGroup);
+				
+				return nodeSVG;
+			}
+			function fncDrawDecisionSymbol()
+			{
+				// create a decision symbol starting at intMx, intMy
+				// returns a descriptive object for this particular symbol.
+				//
+				var objUIData = fncGetUIData();	// get ui (user interface) data from all fields.
+				var intMx = g_arrColumnCenters[objUIData.Column];	// set the x anchor coordinate  to the cell's top center.
+				var intMy = fncCalcYoffset(objUIData.Row);	// set the y anchor coordinate to the calculated offset from the svg node's origin.
+				var objProperties = {};	// will hold the descriptive properties for this particular graph: see below
+				
+				var nodePathGroup = document.createElementNS(g_strSVGNS, "g");	// all graphs are housed within a group node.			
+				var nodePath = document.createElementNS(g_strSVGNS, "path");
+					nodePath.setAttribute('stroke', g_strStroke);
+					nodePath.setAttribute('stroke-width', g_intStroke_width);
+					nodePath.setAttribute('fill', g_strFill);
+					nodePath.setAttribute('id', objUIData.Column + ',' + objUIData.Row);
+					// The decision symbol is drawn from the top point (M), taken as the x,y co-ordinates from the function's arguments and using a standard length taken from a global variable: e.g. g_StdUnitLength
+					nodePath.setAttribute('d', 
+						'M' + intMx + ',' + intMy +
+						' l' + (-1 * g_StdUnitLength) + ',' + g_StdUnitLength + 
+						' l' + g_StdUnitLength + ',' + g_StdUnitLength + 
+						' l' + g_StdUnitLength + ',' + (-1 * g_StdUnitLength) +
+						' l' + (-1 * g_StdUnitLength) + ',' + (-1 * g_StdUnitLength)
+					);
+					nodePath.addEventListener('mousemove', fncMouseEvent, false);
+					nodePath.addEventListener('mouseout', fncMouseEvent, false);
+				nodePathGroup.appendChild(nodePath);
+				// add the descriptive properties to the local objProperties var.
+				objProperties.Type = 'decision';
+				objProperties.Cell = objUIData.Column + ',' + objUIData.Row;
+				objProperties.Node = nodePathGroup;					// node address
+				objProperties.Tx = intMx; 								// x coord of the center of top side
+				objProperties.Ty = intMy; 								// y coord of the center of top side
+				objProperties.Lx = intMx - g_StdUnitLength;		// x coord of the center of left side
+				objProperties.Ly = intMy + g_StdUnitLength;		// y coord of the center of left side
+				objProperties.Rx = intMx + g_StdUnitLength;		// x coord of the center of right side
+				objProperties.Ry = intMy + g_StdUnitLength;		// y coord of the center of right side
+				objProperties.Bx = intMx;								// x coord of the center of bottom side
+				objProperties.By = intMy + 2*g_StdUnitLength;	// y coord of the center of bottom side
+				// append text lines, empty or otherwise
+				fncDrawTextSymbol(objProperties, objUIData);	// the text symbol's properties will be added to this symbol's properties as property: 'NodeTextGroup'
+				fncDrawCSSymbol(objProperties, objUIData); 		// the text symbol properties (">", "<=", etc.) will be added to this symbol's properties as property: 'NodeSymbolGroup'. The "Decision" symbol is the only symbol currently using these compsrison characters.
+				
+				return objProperties;	
+			}
+		
+			function fncDrawStartStopSymbol()
+			{
+				// create a Start/Stop symbol using an svg "rect" element constructor, starting at intMx - g_StdUnitLength, intMy + .5*g_StdUnitLength
+				// returns a descriptive object for this particular symbol.
+				//		
+				var objUIData = fncGetUIData();
+				var intMx = g_arrColumnCenters[objUIData.Column];
+				var intMy = fncCalcYoffset(objUIData.Row);
+				var objProperties = {};
+				
+				var nodeRectGroup = document.createElementNS(g_strSVGNS, "g");
+				var nodeRect = document.createElementNS(g_strSVGNS, "rect");
+					nodeRect.setAttribute('height', g_StdUnitLength);	 
+					nodeRect.setAttribute('width', (2*g_StdUnitLength));
+					nodeRect.setAttribute('x', intMx - g_StdUnitLength);		// top left co-ordinates of rectangle
+					nodeRect.setAttribute('y', intMy + .5*g_StdUnitLength);
+					nodeRect.setAttribute('rx', .4*g_StdUnitLength);			// curvature
+					nodeRect.setAttribute('ry', .4*g_StdUnitLength);
+					nodeRect.setAttribute('id', objUIData.Column + ',' + objUIData.Row);
+					nodeRect.setAttribute('stroke', g_strStroke);
+					nodeRect.setAttribute('stroke-width', g_intStroke_width);
+					nodeRect.setAttribute('fill', g_strFill);
+					nodeRect.addEventListener('mousemove', fncMouseEvent, false);
+					nodeRect.addEventListener('mouseout', fncMouseEvent, false);
+				nodeRectGroup.appendChild(nodeRect);
+				// add the descriptive properties to the local objProperties var.
+				objProperties.Type = 'startstop';
+				objProperties.Cell = objUIData.Column + ',' + objUIData.Row;
+				objProperties.Node = nodeRectGroup;					// node address
+				objProperties.Tx = intMx; 								// x coord of the center of top side
+				objProperties.Ty = intMy + .5*g_StdUnitLength; 	// y coord of the center of top side
+				objProperties.Lx = intMx - g_StdUnitLength;		// x coord of the center of left side, relative to Tx
+				objProperties.Ly = intMy + g_StdUnitLength;		// y coord of the center of left side, relative to Ty
+				objProperties.Rx = intMx + g_StdUnitLength;		// x coord of the center of right side, relative to Tx
+				objProperties.Ry = intMy + g_StdUnitLength;		// y coord of the center of right side, relative to Ty
+				objProperties.Bx = intMx;								// x coord of the center of bottom side, relative to Tx
+				objProperties.By = intMy + 1.5*g_StdUnitLength;			// y coord of the center of bottom side, relative to Ty			
+				// append text lines, empty or otherwise
+				fncDrawTextSymbol(objProperties, objUIData);	// the text symbols properties will be added to this symbol's properties as property: 'NodeTextGroup'
+				
+				return objProperties;		
+			}
+			function fncDrawIOSymbol()
+			{
+				// create a Process symbol using an svg "polygon" element constructor, starting at intMx - g_StdUnitLength + intOffset, intMy
+				// returns a descriptive object for this particular symbol.
+				//
+				var objUIData = fncGetUIData();	
+				var intMx = g_arrColumnCenters[objUIData.Column];
+				var intMy = fncCalcYoffset(objUIData.Row);
+				var objProperties = {};
+				var intOffset = 10;
+				var strPoints = ( (intMx - g_StdUnitLength + intOffset) + ',' + intMy) + ' ' + ( (intMx + g_StdUnitLength) + ',' + intMy) + ' ' + ( (intMx + g_StdUnitLength - intOffset) + ',' + (intMy + 2*g_StdUnitLength) ) + ' ' + ( (intMx - g_StdUnitLength) + ',' + (intMy + 2*g_StdUnitLength) );
+
+				var nodeRectGroup = document.createElementNS(g_strSVGNS, "g");
+				var nodeRect = document.createElementNS(g_strSVGNS, "polygon");
+					nodeRect.setAttribute('points', strPoints);	 
+					nodeRect.setAttribute('id', objUIData.Column + ',' + objUIData.Row);	// the index into the g_arr_objSVGChildObjects arrTy
+					nodeRect.setAttribute('stroke', g_strStroke);
+					nodeRect.setAttribute('stroke-width', g_intStroke_width);
+					nodeRect.setAttribute('fill', g_strFill);
+					nodeRect.addEventListener('mousemove', fncMouseEvent, false);
+					nodeRect.addEventListener('mouseout', fncMouseEvent, false);
+				nodeRectGroup.appendChild(nodeRect);
+				// add the descriptive properties to the local objProperties var.
+				objProperties.Type = 'io';
+				objProperties.Cell = objUIData.Column + ',' + objUIData.Row;
+				objProperties.Node = nodeRectGroup;					// node address
+				objProperties.Tx = intMx; 								// x coord of the center of top side
+				objProperties.Ty = intMy; 								// y coord of the center of top side
+				objProperties.Lx = intMx - g_StdUnitLength + .5*intOffset;		// x coord of the center of left side, relative to Tx
+				objProperties.Ly = intMy + g_StdUnitLength;		// y coord of the center of left side, relative to Ty
+				objProperties.Rx = intMx + g_StdUnitLength - .5*intOffset;		// x coord of the center of right side, relative to Tx
+				objProperties.Ry = intMy + g_StdUnitLength;		// y coord of the center of right side, relative to Ty
+				objProperties.Bx = intMx;								// x coord of the center of bottom side, relative to Tx
+				objProperties.By = intMy + 2*g_StdUnitLength;				// y coord of the center of bottom side, relative to Ty
+				// append text lines, empty or otherwise
+				fncDrawTextSymbol(objProperties, objUIData);	// the text symbols properties will be added to this symbol's properties as property: 'NodeTextGroup'
+				
+				return objProperties;		
+			}
+			function fncDrawProcessSymbol()
+			{
+				// create a Process symbol using an svg "rect" element constructor, starting at intMx - g_StdUnitLength, intMy
+				// returns a descriptive object for this particular symbol.
+				//
+				var objUIData = fncGetUIData();	// get ui data
+				var intMx = g_arrColumnCenters[objUIData.Column];
+				var intMy = fncCalcYoffset(objUIData.Row);
+				var objProperties = {};
+				var nodeRectGroup = document.createElementNS(g_strSVGNS, "g");
+				
+				var nodeRect = document.createElementNS(g_strSVGNS, "rect");
+					nodeRect.setAttribute('height', 2*g_StdUnitLength);	 
+					nodeRect.setAttribute('width', 2*g_StdUnitLength);
+					nodeRect.setAttribute('x', intMx - g_StdUnitLength);		// top left co-ordinates of rectangle
+					nodeRect.setAttribute('y', intMy);
+					nodeRect.setAttribute('id', objUIData.Column + ',' + objUIData.Row);	// the index into the g_arr_objSVGChildObjects
+					nodeRect.setAttribute('stroke', g_strStroke);
+					nodeRect.setAttribute('stroke-width', g_intStroke_width);
+					nodeRect.setAttribute('fill', g_strFill);
+					nodeRect.addEventListener('mousemove', fncMouseEvent, false);
+					nodeRect.addEventListener('mouseout', fncMouseEvent, false);
+				nodeRectGroup.appendChild(nodeRect);
+				// add the descriptive properties to the local objProperties var.
+				objProperties.Type = 'process';
+				objProperties.Cell = objUIData.Column + ',' + objUIData.Row;
+				objProperties.Node = nodeRectGroup;					// node address
+				objProperties.Tx = intMx; 								// x coord of the center of top side
+				objProperties.Ty = intMy; 								// y coord of the center of top side
+				objProperties.Lx = intMx - g_StdUnitLength;		// x coord of the center of left side, relative to Tx
+				objProperties.Ly = intMy + g_StdUnitLength;		// y coord of the center of left side, relative to Ty
+				objProperties.Rx = intMx + g_StdUnitLength;		// x coord of the center of right side, relative to Tx
+				objProperties.Ry = intMy + g_StdUnitLength;		// y coord of the center of right side, relative to Ty
+				objProperties.Bx = intMx;								// x coord of the center of bottom side, relative to Tx
+				objProperties.By = intMy + 2*g_StdUnitLength;				// y coord of the center of bottom side, relative to Ty
+				// append text lines, empty or otherwise
+				fncDrawTextSymbol(objProperties, objUIData);	// the text symbols properties will be added to this symbol's properties as property: 'NodeTextGroup'
+				
+				return objProperties;		
+			}
+			function fncDrawLineSymbol()
+			{		
+				// Create a Line symbol using an svg "line" element constructor from intMx,intMy to intX2,intY2
+				// returns a descriptive object for this particular symbol.
+				//
+				var objUIData = fncGetUIData();
+				var objProperties = {};
+				
+				// set the from/to cell identifiers ("col,row") e.g.: "4,1"
+				var strFromCell = objUIData.Column + ',' + objUIData.Row;
+				var strFromPt = objUIData.Point;
+				var strToCell = objUIData.Column2 + ',' + objUIData.Row2;
+				var strToPt = objUIData.Point2;
+				if ( fncGetChildObj(strFromCell) == null || fncGetChildObj(strToCell) == null )
+				{
+					alert('Both the "From" and "To" cells must first contain a symbol, in order to draw line(s) from/to their respective symbols');
+				}
+				// get the required from/to points for the line: they are the center points stored in each symbol's descriptive object.
+				var intMx = fncGetChildObj(strFromCell)[strFromPt + 'x'];	// 
+				var intMy = fncGetChildObj(strFromCell)[strFromPt + 'y'];		
+				var intX2 = fncGetChildObj(strToCell)[strToPt + 'x'];
+				var intY2 = fncGetChildObj(strToCell)[strToPt + 'y'];
+				// Must adjust line length to accomodate arrowhead.
+				var intArrowLength = 20;	// calculated from the data used in creating the polygon for the arrowhead.
+				var boolDone = false;	// calculation for the adjustment done when true.
+				var intXD = (intX2 - intMx);	// calculate the differences between the from/to co-ordinates.	
+				var intYD = (intY2 - intMy);
+				// from/to coordinates that are plotted along the same axis will need adjustment to only one of the co-ordinates: x or y.
+				// from/to coordinates that are not plotted along either the x or y axis, the adjustment will need to be calculated separately for both the x and y coordinates.
+				// -	to do so we will need to get the angle that the line makes with the x axis.
+				//	-	the result is in radians, which we will use in the cos()/sin() functions to calculate for the adjustment for x/y respectively.
+				// All this because of the space our arrowheads use!
+				var angleRadBPrime = Math.atan(Math.abs(intYD)/(Math.abs(intXD))); // calculate the angle in radians: r = inverse_tan(y/x).
+				if (intMx == intX2 && intMy !== intY2)
+				{
+					// both the from/to points are along the y axis, adjust y accordingly.
+					intY2 = intYD > 0 ? intY2 - intArrowLength : intY2 + intArrowLength ;
+					boolDone = true
+				}
+				if (!boolDone && intMx !== intX2 && intMy == intY2)
+				{
+					// both the from/to points are along the x axis, adjust x accordingly.
+					intX2 = intXD > 0 ? intX2 - intArrowLength : intX2 + intArrowLength ;
+					boolDone = true;
+				}
+				if (!boolDone)
+				{
+					// neither the from nor the to points are along an axis, we need to adjust for x and for y coordinates.
+					var intXN = intArrowLength * Math.cos(angleRadBPrime);
+					var intYN = intArrowLength * Math.sin(angleRadBPrime);
+					intX2 = intXD > 0 ? intX2 - intXN : intX2 + intXN ;
+					intY2 = intYD > 0 ? intY2 - intYN : intY2 + intYN ;
+				}
+				// End of line adjustment
+								
+				var nodeLineGroup = document.createElementNS(g_strSVGNS, "g");
+				var nodeLine = document.createElementNS(g_strSVGNS, "line");
+					nodeLine.setAttribute('x1', intMx);	 
+					nodeLine.setAttribute('y1', intMy);
+					nodeLine.setAttribute('x2', intX2);	 
+					nodeLine.setAttribute('y2', intY2);
+					nodeLine.setAttribute('id', '' + g_intLineID);
+					nodeLine.setAttribute('stroke', g_strStroke);
+					nodeLine.setAttribute('stroke-width', g_intStroke_width);
+					nodeLine.setAttribute('fill', g_strFill);
+					nodeLine.setAttribute('marker-end', 'url(#arrowhead)');
+					// outline the line the mouse is over
+					nodeLine.addEventListener('mousemove', fncMouseEvent, false);
+					nodeLine.addEventListener('mouseout', fncMouseEvent, false);
+				nodeLineGroup.appendChild(nodeLine);
+				// add the descriptive properties to the local objProperties var.
+				objProperties.Type = 'lines';
+				objProperties.Cell = '' + g_intLineID++;			// unique id for flow lines.
+				objProperties.CellPair = { FromCell: strFromCell, ToCell:  strToCell };	// we need to keep track of which symbols the flow lines point to/from
+				objProperties.Node = nodeLineGroup;					// node address
+				objProperties.Sx = intMx; 								// x coord of the starting position
+				objProperties.Sy = intMy; 								// y coord of the starting position
+				objProperties.Cx = Math.abs(intMx - intX2) / 2;	// x coord of the center position
+				objProperties.Cy = Math.abs(intMy - intY2) / 2;	// y coord of the center position
+				objProperties.Ex = intX2;									// x coord of the end of the line
+				objProperties.Ey = intY2;									// y coord of the end of the line
+		
+				return objProperties;		
+			}
+			function fncDrawConnectorSymbol()
+			{		
+				// create a Connector symbol using an svg "circle" element constructor, centered at intMx, intMy + g_StdUnitLength
+				// returns a descriptive object for this particular symbol.
+				//
+				var objUIData = fncGetUIData();	// get ui data
+				var intMx = g_arrColumnCenters[objUIData.Column];
+				var intMy = fncCalcYoffset(objUIData.Row);
+				var objProperties = {};
+				
+				var nodeConnectorGroup = document.createElementNS(g_strSVGNS, "g");				
+				var nodeCircle = document.createElementNS(g_strSVGNS, "circle");
+					nodeCircle.setAttribute('cx', intMx);
+					nodeCircle.setAttribute('cy', intMy + g_StdUnitLength);
+					nodeCircle.setAttribute('r', .5*g_StdUnitLength);
+					nodeCircle.setAttribute('id', objUIData.Column + ',' + objUIData.Row);	// the index into the g_arr_objSVGChildObjects
+					nodeCircle.setAttribute('stroke', g_strStroke);
+					nodeCircle.setAttribute('stroke-width', g_intStroke_width);
+					nodeCircle.setAttribute('fill', g_strFill);
+					nodeCircle.addEventListener('mousemove', fncMouseEvent, false);
+					nodeCircle.addEventListener('mouseout', fncMouseEvent, false);
+				nodeConnectorGroup.appendChild(nodeCircle);
+
+				// add the descriptive properties to the local objProperties var.
+				objProperties.Type = 'connector';
+				objProperties.Cell = objUIData.Column + ',' + objUIData.Row;
+				objProperties.Node = nodeConnectorGroup;			// node address
+				objProperties.Cx = intMx; 								// x coord of the center of circle
+				objProperties.Cy = intMy + g_StdUnitLength; 		// y coord of the center of circle
+				objProperties.R = .5*g_StdUnitLength;				// length of radius for the circle
+				objProperties.Tx = intMx; 								// x coord of the center of top side
+				objProperties.Ty = intMy + .5*g_StdUnitLength; 	// y coord of the center of top side
+				objProperties.Lx = intMx - .5*g_StdUnitLength;	// x coord of the center of left side
+				objProperties.Ly = intMy + g_StdUnitLength;		// y coord of the center of left side
+				objProperties.Rx = intMx + .5*g_StdUnitLength;	// x coord of the center of right side
+				objProperties.Ry = intMy + g_StdUnitLength;		// y coord of the center of right side
+				objProperties.Bx = intMx;								// x coord of the center of bottom side
+				objProperties.By = intMy + 1.5*g_StdUnitLength;	// y coord of the center of bottom side
+				// append text lines, empty or otherwise
+				fncDrawTextSymbol(objProperties, objUIData);	// the text symbols properties will be added to this symbol's properties as property: 'NodeTextGroup'
+			
+				return objProperties;
+			}
+			function fncDrawOPConnectorSymbol()
+			{		
+				// create an Off Page Connector symbol using an svg "map" element constructor, starting at intMx, intMy + .625 * g_StdUnitLength
+				// returns a descriptive object for this particular symbol.
+				//
+				var objUIData = fncGetUIData();	// get ui data
+				var intMx = g_arrColumnCenters[objUIData.Column];
+				var intMy = fncCalcYoffset(objUIData.Row);
+				var objProperties = {};
+				
+				var intCommonLength = .25 * g_StdUnitLength;
+				var intMy2 = intMy + .625 * g_StdUnitLength;	// y coordinate for the starting point of the graph
+							
+				var nodeOPConnectorGroup = document.createElementNS(g_strSVGNS, "g");	// all graphs are housed within a group node.			
+				var nodePath = document.createElementNS(g_strSVGNS, "path");
+					nodePath.setAttribute('stroke', g_strStroke);
+					nodePath.setAttribute('stroke-width', g_intStroke_width);
+					nodePath.setAttribute('fill', g_strFill);
+					nodePath.setAttribute('id', objUIData.Column + ',' + objUIData.Row);
+					// The off page connector symbol is drawn from the top point (M), taken as the x,y co-ordinates from the function's arguments and using a fraction of the standard length (intCommonLength) taken from a global variable: e.g. g_StdUnitLength
+					// the coordinate values are given from a fixed anchor point and then using relative values from that fixed anchor point.
+					nodePath.setAttribute('d', 
+						'M' + intMx + ',' + (intMy + .625 * g_StdUnitLength) +
+						' l' + (-1 * intCommonLength) + ',' + 0 + 
+						' l' + 0 + ',' + (2 * intCommonLength) + 
+						' l' + intCommonLength + ',' + intCommonLength +
+						' l' + intCommonLength + ',' + (-1 * intCommonLength) +
+						' l' + 0 + ',' + (-2 * intCommonLength) + 
+						' l' + (-1 * intCommonLength) + ',' + 0 
+					);
+					nodePath.addEventListener('mousemove', fncMouseEvent, false);
+					nodePath.addEventListener('mouseout', fncMouseEvent, false);
+				nodeOPConnectorGroup.appendChild(nodePath);
+
+				// add the descriptive properties to the local objProperties var.
+				objProperties.Type = 'opconnector';
+				objProperties.Cell = objUIData.Column + ',' + objUIData.Row;
+				objProperties.Node = nodeOPConnectorGroup;			// node address
+				objProperties.Tx = intMx; 								// x coord of the center of top side
+				objProperties.Ty = intMy + .625*g_StdUnitLength; 	// y coord of the center of top side
+				objProperties.Lx = intMx - .25*g_StdUnitLength;	// x coord of the center of left side
+				objProperties.Ly = intMy + g_StdUnitLength;		// y coord of the center of left side
+				objProperties.Rx = intMx + .25*g_StdUnitLength;	// x coord of the center of right side
+				objProperties.Ry = intMy + g_StdUnitLength;		// y coord of the center of right side
+				objProperties.Bx = intMx;								// x coord of the center of bottom side
+				objProperties.By = intMy + 1.375*g_StdUnitLength;	// y coord of the center of bottom side
+				// append text lines, empty or otherwise
+				fncDrawTextSymbol(objProperties, objUIData);	// the text symbols properties will be added to this symbol's properties as property: 'NodeTextGroup'
+			
+				return objProperties;
+			}
+			function fncDrawPivotPointSymbol()
+			{		
+				// create a pivot point  symbol using an svg "circle" element constructor, centered at intMx, intMy + g_StdUnitLength
+				// returns a descriptive object for this particular symbol.
+				//
+				var objUIData = fncGetUIData();	// get ui data
+				var intMx = g_arrColumnCenters[objUIData.Column];
+				var intMy = fncCalcYoffset(objUIData.Row);
+				var objProperties = {};
+				var intRadius = 4;	// default radius: circle of 8
+				
+				var nodePivotPointGroup = document.createElementNS(g_strSVGNS, "g");				
+				var nodeCircle = document.createElementNS(g_strSVGNS, "circle");
+					nodeCircle.setAttribute('cx', intMx);
+					nodeCircle.setAttribute('cy', intMy + g_StdUnitLength);
+					nodeCircle.setAttribute('r', intRadius);
+					nodeCircle.setAttribute('id', objUIData.Column + ',' + objUIData.Row);	// the index into the g_arr_objSVGChildObjects
+					nodeCircle.setAttribute('stroke', g_strStroke);
+					nodeCircle.setAttribute('stroke-width', '0');
+					nodeCircle.setAttribute('fill', g_strStroke);
+					nodeCircle.addEventListener('mousemove', fncMouseEvent, false);
+					nodeCircle.addEventListener('mouseout', fncMouseEvent, false);
+				nodePivotPointGroup.appendChild(nodeCircle);
+
+				// add the descriptive properties to the local objProperties var.
+				objProperties.Type = 'pivotpoint';
+				objProperties.Cell = objUIData.Column + ',' + objUIData.Row;
+				objProperties.Node = nodePivotPointGroup;						// node address
+				objProperties.Cx = intMx; 											// x coord of the center of circle
+				objProperties.Cy = intMy + g_StdUnitLength; 					// y coord of the center of circle
+				objProperties.R = intRadius;										// length of radius for the circle
+				objProperties.Tx = intMx; 											// x coord of the center of top side
+				objProperties.Ty = intMy + g_StdUnitLength - intRadius; 	// y coord of the center of top side
+				objProperties.Lx = intMx - intRadius;							// x coord of the center of left side
+				objProperties.Ly = intMy + g_StdUnitLength;					// y coord of the center of left side
+				objProperties.Rx = intMx + intRadius;							// x coord of the center of right side
+				objProperties.Ry = intMy + g_StdUnitLength;					// y coord of the center of right side
+				objProperties.Bx = intMx;											// x coord of the center of bottom side
+				objProperties.By = intMy + g_StdUnitLength + intRadius;	// y coord of the center of bottom side
+				// append text lines, empty or otherwise
+				fncDrawTextSymbol(objProperties, objUIData);	// the text symbols properties will be added to this symbol's properties as property: 'NodeTextGroup'
+			
+				return objProperties;
+			}
+			//
+			// the following constructors are added to the parent symbols descriptive object: N.B. they are not added to the global objects g_arr_objSVGChildObjects array directly.
+			//
+			function fncDrawTextSymbol(objCellSymbolProperties, objUIData)
+			{
+				// Create text symbols using an svg "text" element constructor
+				// objCellSymbolProperties: the address of the symbol's desriptive object
+				// objUIData: the data in ui fields
+				// Note: all parent symbols, except for flow lines, contain three text nodes, empty or otherwise.
+				
+				var objProperties = {};
+				
+				// delete the existing "NodeTextGroup" property from the Symbol's descriptive object, if it exists.			
+				if ( objCellSymbolProperties.hasOwnProperty('NodeTextGroup') )	
+				{
+					objCellSymbolProperties.NodeTextGroup.remove();	
+				}				
+				// collect the values of the ui's input nodes into an array and store a copy in the parent symbol's properties.
+				var arr_strInputNodes = document.getElementById('id_text_lines').getElementsByTagName("input");
+				var strID = "id_text_line_";	// the prefix for the id's for the input elements in the ui.
+				var arr_strText = [];
+				for (var i=0;i<arr_strInputNodes.length;i++)
+				{
+					arr_strText[i] = arr_strInputNodes[i].value;	// get value from ui input element: may be empty.
+				}
+						
+				// establish the x,y coordinates from the passed symbol's descriptive object
+				var intTx = objCellSymbolProperties.Tx;	// top x center coordinate
+				var intTy = objCellSymbolProperties.Ty;	// top y
+				var intBy = objCellSymbolProperties.By;	// bottom y
+				
+				var nodeTextGroup = document.createElementNS(g_strSVGNS, "g");	// create a node (NodeTextGroup) to append to the parent's group node
+				var nodeTextLineT = null;
+				// establish the origin points for the text lines
+				var intCenterPty = intTy + ((intBy - intTy) / 2) + .5*g_strFontSize;
+				var intCenterCharacter = 0;	// the center character in the text
+				var intStartLinePtx = 0;	// the x coordinate for the beginning of the text
+				var intStartLinePt2y = intCenterPty;	// the y coordinate for the beginning of the text
+				var strStringLine = '';	// the text
+				for(var i=0;i<arr_strText.length;i++)
+				{
+					nodeTextLineT = document.createElementNS(g_strSVGNS, "text");
+						strStringLine = arr_strText[i];
+						intCenterCharacter = Math.ceil(strStringLine.length / 2);
+						intStartLinePtx = intTx - ( intCenterCharacter * g_strFontSize/g_FontWidthRatio );
+						// adjust the y coordinate to match the ui's order.
+						switch(i)
+						{
+							case 0:
+								intStartLinePt2y = intCenterPty - (g_FontLineHeightRatio * g_strFontSize);	// one line up from center
+								break;
+							case 1:
+								intStartLinePt2y = intCenterPty;	// center line
+								break;
+							case 2:
+								intStartLinePt2y = intCenterPty + (g_FontLineHeightRatio * g_strFontSize);	// one line down from center
+								break;
+						}			
+						nodeTextLineT.setAttribute('x', intStartLinePtx);
+						nodeTextLineT.setAttribute('y', intStartLinePt2y - 3);
+						nodeTextLineT.setAttribute('id', "id_text_line_" + i);
+						nodeTextLineT.setAttribute('style', 'font-weight: bold; font-family: ' + g_strFontFamily + ' font-size: ' + g_strFontSize + 'px ;');	// for svg the unit identifier must be specified.
+						nodeTextLineT.textContent = strStringLine;
+					nodeTextGroup.appendChild(nodeTextLineT); 
+				}
+					// set/reset the descriptive	object for this node
+					objProperties.Node = nodeTextGroup;
+					objProperties.Lines = {line_1 : objUIData.TextLine1, line_2 : objUIData.TextLine2, line_3 : objUIData.TextLine3 };	// every parent'ass descriptive object will have 3 text nodes.
+					objCellSymbolProperties.NodeTextGroup = objProperties;	// store copy of this node's descriptive properties in its parent's group node.
+					objCellSymbolProperties.Node.appendChild(nodeTextGroup);	// add the text line node Group to its parent's node Group in the DOM.
+				
+				return true;
+			}
+			function fncDrawCSSymbol(objCellSymbolProperties, objUIData)
+			{
+				// Create comparison text symbols using an svg "text" element constructor
+				// objCellSymbolProperties: the address of the symbol's desriptive object
+				// objUIData: the data in ui fields
+				// Note: all parent 'decision' symbols will contain 3 comparison symbols, blank or otherwise. One for each position: 'R'ight, 'B'ottom, 'L'eft.
+				
+				var arr_objXternText = [];	// array points to a single descriptive object for a given point
+				var objProperties = {};
+				if ( objCellSymbolProperties.hasOwnProperty('NodeSymbolGroup') )	
+				{
+					objCellSymbolProperties.NodeSymbolGroup.remove();	// delete the existing svg text group if it exists.
+				}
+			
+				// get the parms for the parent symbol
+				var intTx = objCellSymbolProperties.Tx;
+				var intTy = objCellSymbolProperties.Ty;
+				var intLx = objCellSymbolProperties.Lx;
+				var intLy = objCellSymbolProperties.Ly;
+				var intRx = objCellSymbolProperties.Rx;
+				var intRy = objCellSymbolProperties.Ry;
+				var intBx = objCellSymbolProperties.Bx;
+				var intBy = objCellSymbolProperties.By;					
+				// external symbol text
+				var intPx = 0;
+				var intPy = 0;
+				var intSpacex = 5;
+				var intSpaceY = 10;
+				
+				// build arr_objXternText with ui data	
+				var arr_SelectPointsList = ['R', 'B', 'L'];
+				var arr_SelectSymbolsList = document.getElementsByName("selectS");
+				for (var i=0;i<arr_SelectPointsList.length;i++)
+				{
+					arr_objXternText[i] = {'point' : arr_SelectPointsList[i], 'symbol' : arr_SelectSymbolsList[i].options[arr_SelectSymbolsList[i].selectedIndex].text};
+				}						
+				var nodeTextGroup = document.createElementNS(g_strSVGNS, "g");
+				var nodeTextLineT = null;
+				// loop through each object creating the required text node
+				for(var i=0;i<arr_objXternText.length;i++)		
+				{
+					if(arr_objXternText[i].symbol == 'none')
+					{
+						arr_objXternText[i].symbol = '';
+					}
+					switch(arr_objXternText[i].point)
+					{
+						case 'T':
+							intPx = intTx + 2*intSpacex;
+							intPy = intTy - intSpacex;
+							break;
+						case 'L':
+							intPx = intLx -  2 * g_strFontSize/g_FontWidthRatio;
+							intPy = intLy - intSpaceY;
+							break;
+						case 'R':
+							intPx = intRx + intSpacex;
+							intPy = intRy - intSpaceY;
+							break;
+						case 'B':
+							intPx = intBx + 2*intSpacex;
+							intPy = intBy + intSpaceY;
+							break;
+						default :
+							break;
+					}
+
+					nodeTextLineT = document.createElementNS(g_strSVGNS, "text");
+						nodeTextLineT.setAttribute('x', intPx);
+						nodeTextLineT.setAttribute('y', intPy);
+						nodeTextLineT.setAttribute('style', 'font-weight: bold; font-family: ' + g_strFontFamily + ' font-size: ' + g_strFontSize + 'px ;');	// for svg the unit identifier must be specified.
+						nodeTextLineT.textContent = arr_objXternText[i].symbol;
+						nodeTextGroup.appendChild(nodeTextLineT);
+				} // end for
+
+				// set/reset the descriptive	object for this node
+				objProperties.Node = nodeTextGroup;
+				objProperties.Symbols = {SR : objUIData.SymbolR, SB : objUIData.SymbolB, SL : objUIData.SymbolL };			
+				objCellSymbolProperties.NodeSymbolGroup = objProperties;	// store a copy of this node's descriptive properties in its parent's group node.
+				objCellSymbolProperties.Node.appendChild(nodeTextGroup);	// add the text line node Group to its parent's node Group in the DOM.
+
+			}
+			// End of Constructors
+			
+			// End of SVG script
+
+		</script>
+		<script>
+			// Start of HTML script
+			//			
+			// General functions
+			function fncCalcYoffset(intRow)
+			{
+				// calculates the anchor point for the y co-ordinate based on the given row
+				// intRow: is a number representing the row value to be used in the following calculations.
+				return g_intGap + intRow * (g_intRowHeight + g_intGap);	// leading gap + (symbol + gap)
+			}
+			function fncGetChildObj(strCell)
+			{
+				// strCell: a string representing the identifier for a symbol - 'col,row'
+				// returns the object within the general global descriptive objects array that matches the cell string passed to it: e.g. "3,2"
+				var objDescriptiveObject = null;
+				for(var i=0;i<g_arr_objSVGChildObjects.length;i++)
+				{
+					if(g_arr_objSVGChildObjects[i].Cell == strCell)
+					{ 
+						objDescriptiveObject = g_arr_objSVGChildObjects[i];
+						objDescriptiveObject.index = i;		// add the index where found to the properties list.
+						break;
+					}
+				}
+				return objDescriptiveObject;
+			}
+			function fncGetCellFromCoord(intLocX, intLocY)
+			{
+				// intLocX and intLocY are the x,y coordinate points within the svg space.
+				// returns an object whose properties describe the cell that contains the passed coordinates in svg space, or the following defaults:
+				var objCell = { cell: 'none', intX : 0, intY : 0};
+				for (var objCellOrigin in g_arr_objCellOrigins)
+				{
+					var obj = g_arr_objCellOrigins[objCellOrigin];	// g_arr_objCellOrigins is an associative array with indexes of the form 'row,col'.
+					var intColEndPt = obj.Col + (2 * g_StdUnitLength) + g_intGap  - 1;
+					var intRowEndPt = obj.Row + (2 * g_StdUnitLength) + g_intGap - 1;
+					if ( (intLocX >= obj.Col && intLocX <= intColEndPt) && (intLocY >= obj.Row && intLocY <= intRowEndPt) )
+					{
+						objCell.cell = objCellOrigin;
+						objCell.intX = obj.Col;
+						objCell.intY = obj.Row;
+						break;
+					}
+				}
+				return objCell;
+			}			
+			function fncSetToCell(loc)
+			{
+				// The left-click key combo has been pressed: set the ui's Column/Row fields from the currently selected cell.
+				// loc: an object whose properties describe a point in the SVG space.
+				var intLocX = Math.ceil(loc.x);
+				var intLocY = Math.ceil(loc.y);
+				var objCell = fncGetCellFromCoord(intLocX, intLocY);	// get the cell designation ('col,row') from the given co-ordinates.
+				if (objCell.cell !== 'none')
+				{
+					var arr_strCell =  objCell.cell.split(',');
+					document.getElementById('id_column2').value = arr_strCell[0];
+					document.getElementById('id_row2').value = arr_strCell[1];
+				}
+			}
+			function fncDeleteSymbol(strID, i)
+			{
+				var arr_IDs = [];
+				// it's a graph (symbol) other than type 'line'.
+				// check the line's to see if they match either to/from with this symbol's id.
+				//
+				// get a collection of all the line nodes.
+				// note: for flow lines the 'Cell. descriptive object property and the 'id' are assigned a unique value when constructed and thus do not conform to the standard symbols id and cell properties of 'col,row'.
+				var arr_lines = document.getElementsByTagName("line");
+				for ( var j=0;j<arr_lines.length;j++ )	// iterate through all the line nodes looking for a match on a cell's unique id.
+				{
+					for ( var k=0;k<g_arr_objSVGChildObjects.length;k++ )	// iterate through the currently built symbols (graphs) descriptive objects
+					{
+						if ( arr_lines[j].getAttribute('id') == g_arr_objSVGChildObjects[k].Cell )	// we found a line node matching a built line graph's descriptive object cell property.
+						{
+							// does 	this built object's descriptive 'FromCell' or 'ToCell' property match the currently selected cell which is destined to be deleted?, if so, we need to delete the flow line graphs associated with it.
+							if ( g_arr_objSVGChildObjects[k].CellPair.FromCell == strID || g_arr_objSVGChildObjects[k].CellPair.ToCell == strID )
+							{
+								if ( g_arr_objSVGChildObjects[k] )
+								{
+									g_arr_objSVGChildObjects[k].Node.remove();	// remove from DOM if it exists
+								}
+								if ( !arr_IDs.includes(g_arr_objSVGChildObjects[k].Cell) )
+								{
+									arr_IDs.push(g_arr_objSVGChildObjects[k].Cell);	// push onto array if not already there: defer the removal from the array g_arr_objSVGChildObjects.
+								}
+							}
+						}
+					}
+				}
+				// remove symbol node
+				g_arr_objSVGChildObjects[i].Node.remove();	// remove from DOM
+				g_arr_objSVGChildObjects.splice(i, 1); // remove from build array
+				// remove line nodes that were deferred, if any.						
+				for ( var m=g_arr_objSVGChildObjects.length - 1;m>=0;m-- )
+				{
+					if ( arr_IDs.includes(g_arr_objSVGChildObjects[m].Cell) )
+					{
+						g_arr_objSVGChildObjects.splice(m, 1); // remove from build array
+					}
+				}	
+			}
+			function fncDelete(evt) 	
+			{
+				// The alt-click key combo has been pressed or the function has been called from fncDraw: 
+				//		remove the symbol and any flow lines pointing to it, if any, or a line graph itself.
+				// evt: the event object built when the alt-click key event occurred, or a string containing the id for the symbol.
+				var strID = null;
+				if ( typeof evt === 'string' )
+				{
+					strID = evt;
+				}
+				else
+				{
+					strID = evt.target.getAttribute('id');
+				}
+				for ( var i=0;i<g_arr_objSVGChildObjects.length;i++ )	// iterate through all the current symbol objects looking for a match using the object's Cell property
+				{
+					if ( g_arr_objSVGChildObjects[i].Cell == strID )
+					{
+						// found a match: there is a symbol within this cell
+						switch(g_arr_objSVGChildObjects[i].Type)	// Type is a property of the descriptive obejct for a symbol: e.g. 'decision, 'io', etc.
+						{
+							case 'flowlines' :
+								// it's a line graph
+								g_arr_objSVGChildObjects[i].Node.remove();	// remove from DOM
+								g_arr_objSVGChildObjects.splice(i, 1);	// remove from build array
+								break;
+							default :
+								fncDeleteSymbol(strID, i);
+								break;
+						} // End of Switch
+						break;	// terminate loop after found
+					}	// end IF
+				} // End For
+
+			}
+			function fncMouseEvent(evt)
+			{
+				// evt: the event object built when the event occurred
+				// handles the mousemove and mouseout set on each cell marker: 'rect' node
+				switch(evt.type)
+				{
+					case 'mousemove' :
+						evt.target.setAttribute('stroke-width', '10');
+						break;
+					case 'mouseout' :
+						evt.target.setAttribute('stroke-width', g_intStroke_width);
+						break;
+				}
+			}
+			function fncMinify(object)
+			{
+				// Args:
+				// object:	the object to minify
+				// Returns: a string: "key=value,key=value, ... "
+				
+				strRes = '"';
+				for (var property in object) 
+				{
+					if ( Object.prototype.hasOwnProperty.call(object, property) )
+					{
+						strRes += property + "=" + object[property] + ",";
+					}
+				}
+				return strRes.substr(0, strRes.length - 1) + '"';
+			}
+			function fncPreview()
+			{
+				// Notes:	Displays a popup window containing a properly composed svg string. 
+				//				The window contents can be saved as an svg file for future use.
+				//				The contents of the saved file can be edited to provide e.g.: annotations by extending the svg code, html conversion/addition etc.
+
+				// close the window if already open.
+				if (g_objOutputWindow != null && typeof g_objOutputWindow == "object")
+				{
+					g_objOutputWindow.close();
+				}
+				if ( g_nodeDrawGroup )
+				{
+					var strSVGHeader = '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:ev="http://www.w3.org/2001/xml-events" xml:space="preserve" width="8.5in" height="11in">';
+					var strSVGFooter = '</svg>';
+					var objSerializer = new XMLSerializer();	// get a dom serializer
+					var strNodeDefsGroup = objSerializer.serializeToString(g_nodeSVG.getElementById('id_DefsGroup1'));	// convert the node to a string representation.
+					var strSVGNodeGroup = objSerializer.serializeToString(g_nodeDrawGroup);	// convert the node to a string representation.
+					var strNodeString = strNodeDefsGroup + strSVGNodeGroup;
+					strSVGString = strSVGHeader + strNodeString + strSVGFooter;
+					strSVGString = fncXMLFormat(strSVGString);	// make the string pretty				
+					var svg_blob = new Blob([strSVGString],{'type': "image/svg+xml"});
+					var url = URL.createObjectURL(svg_blob);
+					var svg_win = window.open(url, "svg_win");
+				}
+				return true;
+			}
+			function fncGetUIData()
+			{
+			// collect and return an object containing the values for all ui fields except the draw and preview buttons.
+				var objUIData = {};	// currently 17 props
+				objUIData.Graph = document.getElementById('id_graph').value;
+				objUIData.Status = document.getElementById('id_grid').value;
+				objUIData.Column = document.getElementById('id_column').value;
+				objUIData.Row = document.getElementById('id_row').value;
+				objUIData.TextLine1 = document.getElementById('id_text_line_1').value;
+				objUIData.TextLine2 = document.getElementById('id_text_line_2').value;
+				objUIData.TextLine3 = document.getElementById('id_text_line_3').value;
+				objUIData.Point = document.getElementById('id_point').value;
+				objUIData.Column2 = document.getElementById('id_column2').value;
+				objUIData.Row2 = document.getElementById('id_row2').value;
+				objUIData.Point2 = document.getElementById('id_point2').value;
+				objUIData.SymbolR = document.getElementById('id_symbolR').value;
+				objUIData.SymbolB = document.getElementById('id_symbolB').value;
+				objUIData.SymbolL = document.getElementById('id_symbolL').value;
+				
+				return objUIData;
+			}
+			function fncGrid(objBtn)
+			{
+				// handles the 'Display Grid' ui button.
+				// objBtn: the object that this event occurred on.
+				if (objBtn.getAttribute('status') == 'on')
+				{
+					// on, turn off
+					g_nodeSVG.getElementById('id_SVGGrid').setAttribute('display', 'none');
+					objBtn.setAttribute('status', 'off');	// toggle status
+				}
+				else
+				{
+					// off, turn on
+					g_nodeSVG.getElementById('id_SVGGrid').setAttribute('display', 'block');
+					objBtn.setAttribute('status', 'on');	// toggle status
+				}
+			}
+			function cursorPoint(evt)
+			{
+				// evt: the event object built when the event occurred
+				// called from a click event to transform the window click x,y coordinates to x,y svg coordinate space.
+				g_pt.x = evt.clientX; 
+				g_pt.y = evt.clientY;
+				
+				return g_pt.matrixTransform(g_nodeSVG.getScreenCTM().inverse());
+			}
+			function fncIndexOf(HTMLCollection, strValue)
+			{
+				// returns the option node within the select element that matches the option's value attribute.
+				// HTMLCollection: a collection of the 'options' elements
+				// strValue: a string representing the search criteria
+				var intIndex = null;
+				for( var i=0;i<HTMLCollection.length;i++ )
+				{
+					if(HTMLCollection[i].value == strValue)
+					{
+						intIndex = i;
+						break;
+					}
+				}			
+				return intIndex;
+			}
+			function fncResetUI(objSymBolObject, boolReset)
+			{			
+				// reset the display to its original state: first - total zero reset then reset again using symbol's descriptive object data, if there is a symbol present within the cell.
+				// objSymBolObject: an object representing a built symbol
+				// boolReset: boolean used to determine whether to reset this portion of the symbol.
+				
+				// for the display:
+				document.getElementById("id_span_text").setAttribute('style', 'display: inline;');
+				document.getElementById("id_text_lines").setAttribute('style', 'display: inline-table;');
+				document.getElementById("id_span_lines").setAttribute('style', 'display: none;');
+				document.getElementById("id_span_symbols").setAttribute('style', 'display: none;');
+				// for the ui fields:
+				if ( boolReset )	// this part only if boolReset is true
+				{
+					document.getElementById('id_graph').options[0].selected = true;
+				}
+				// reset coordinates to current marker if marker is active.
+				if ( g_strMarkedCell.length > 0)	// e.g. '3,2'
+				{
+					var arr_strCell =  g_strMarkedCell.split(',');
+					document.getElementById('id_column').value = arr_strCell[0];
+					document.getElementById('id_row').value = arr_strCell[1];	
+				}
+				else
+				{
+					document.getElementById('id_column').value = null;
+					document.getElementById('id_row').value = null;
+				}
+				document.getElementById('id_text_line_1').value = null;
+				document.getElementById('id_text_line_2').value = null;
+				document.getElementById('id_text_line_3').value = null;
+						
+				document.getElementById("id_point").options[0].selected = true;
+				document.getElementById("id_row2").value = null;
+				document.getElementById("id_column2").value = null;
+				document.getElementById("id_point2").options[0].selected = true;
+
+
+				document.getElementById('id_symbolR').options[0].selected = true;
+				document.getElementById('id_symbolB').options[0].selected = true;
+				document.getElementById('id_symbolL').options[0].selected = true;
+				// End of original state reset
+				
+				// Start of reset for symbol if found in cell
+				if(objSymBolObject !== null)
+				{	
+					// objSymBolObject:	contains the descriptive properties of the enclosed symbol, if ther is one.
+					//
+					// display appropriate ui fields					
+					document.getElementById('id_graph').options[fncIndexOf(document.getElementById('id_graph').options, objSymBolObject.Type)].selected = true;
+					document.getElementById("id_span_text").setAttribute('style', 'display: inline;');
+					document.getElementById("id_text_lines").setAttribute('style', 'display: inline-table;');
+					document.getElementById("id_span_symbols").setAttribute('style', 'display: none;');						
+					// reset appropriate ui feilds
+					document.getElementById('id_text_line_1').value = objSymBolObject.NodeTextGroup.Lines.line_1;
+					document.getElementById('id_text_line_2').value = objSymBolObject.NodeTextGroup.Lines.line_2;
+					document.getElementById('id_text_line_3').value = objSymBolObject.NodeTextGroup.Lines.line_3;
+					switch(objSymBolObject.Type)
+					{
+						case 'decision' :
+							// display appropriate ui fields
+							document.getElementById("id_span_symbols").setAttribute('style', 'display: inline;');						
+							// reset appropriate ui fields
+							document.getElementById('id_symbolR').options[fncIndexOf(document.getElementById('id_symbolR').options, objSymBolObject.NodeSymbolGroup.Symbols.SR)].selected = true;
+							document.getElementById('id_symbolB').options[fncIndexOf(document.getElementById('id_symbolB').options, objSymBolObject.NodeSymbolGroup.Symbols.SB)].selected = true;
+							document.getElementById('id_symbolL').options[fncIndexOf(document.getElementById('id_symbolL').options, objSymBolObject.NodeSymbolGroup.Symbols.SL)].selected = true;
+							break;
+						default :							
+							break;
+					}
+				}
+			}
+			function fncMarkCell(loc)
+			{
+				// Change the cell's rectangle to solid border and reset ui fields for this symbol from its descriptive object properties, if it exists.			
+				// loc: an object representing a point in the svg space where the user clicked.
+				
+				var intLocX = Math.ceil(loc.x);
+				var intLocY = Math.ceil(loc.y);
+				var objCell = fncGetCellFromCoord(intLocX, intLocY);	// get the cell designation (col,row) from the given co-ordinates.
+				var objSymBolObject = objCell.cell === 'none' ? null : fncGetChildObj(objCell.cell);	// get the Symbol's descriptive object from the cell descriptor ('col,row') in the array g_arr_objSVGChildObjects.
+
+				// build and display the marker if not currently marked
+				if ( objCell.cell !== 'none' && g_strMarkedCell !== objCell.cell )	// a cell was found above and it is not already marked
+				{
+					// remove the previous cell marker child node, if there was one.
+					if(g_strMarkedCell.length > 0 && g_nodeSVG.getElementById('id_Use') !== null)
+					{
+						g_nodeSVG.getElementById('id_Use').remove();
+					}					
+					// build use from previuosly defined def/rect.
+					var nodeUse = document.createElementNS(g_strSVGNS, "use");
+						nodeUse.setAttribute('id', 'id_Use');
+						nodeUse.setAttribute('href', '#cellMarker');
+						nodeUse.setAttribute('x', objCell.intX + .5*g_StdUnitLength);
+						nodeUse.setAttribute('y', objCell.intY + .5*g_StdUnitLength);	
+					g_nodeSVG.appendChild(nodeUse);					
+					g_strMarkedCell = objCell.cell;	// remember the cell that is currently marked
+
+				}
+				// reset ui fields for this symbol from its descriptive object properties, if it exists.				
+				fncResetUI(objSymBolObject, true);
+			}
+			function fncGraphSelected(objSelect)
+			{
+				// display the appropriate ui fields for this symbol and reset their respective ui fields to their original state.
+				// objSelect: an object representing an element in the DOM.
+				
+				fncResetUI(null, false);	// reset the UI fields to their original state
+				// reset appropriate ui fields
+				switch(objSelect.value)
+				{
+					case 'flowlines' :
+						document.getElementById("id_span_text").setAttribute('style', 'display: none;');
+						document.getElementById("id_text_lines").setAttribute('style', 'display: none;');
+						document.getElementById("id_span_lines").setAttribute('style', 'display: inline-table;');
+						document.getElementById("id_span_symbols").setAttribute('style', 'display: none;');						
+						break;
+					case 'decision' :
+						document.getElementById("id_span_text").setAttribute('style', 'display: inline;');
+						document.getElementById("id_text_lines").setAttribute('style', 'display: inline-table;');
+						document.getElementById("id_span_lines").setAttribute('style', 'display: none;');
+						document.getElementById("id_span_symbols").setAttribute('style', 'display: inline;');
+						break;						
+					default :
+						// for all other symbols					
+						document.getElementById("id_span_text").setAttribute('style', 'display: inline;');
+						document.getElementById("id_text_lines").setAttribute('style', 'display: inline-table;');
+						document.getElementById("id_span_lines").setAttribute('style', 'display: none;');
+						document.getElementById("id_span_symbols").setAttribute('style', 'display: none;');
+				}
+				
+			}
+			function fncDraw()
+			{
+				// build and save the currently selected symbol and add it plus all others currently saved (pre-built) to the DOM.
+				if ( g_strMarkedCell.length > 0 )
+				{
+					// Remove the marker rect 'use' node, if it exists
+					if (g_nodeSVG.getElementById('id_Use') !== null)
+					{
+						g_nodeSVG.getElementById('id_Use').remove();	// remove 'use' node from DOM
+						g_strMarkedCell = '';	// reset marked cell indicator 
+					}
+					if(document.getElementById("id_graph").value !== 'flowlines')
+					{
+						// remove the symbol node contained in this cell, if one exists, from both the global descriptive objects array and from the DOM in preparation for a re-build.
+						var objUIData = fncGetUIData();	// get a copy of the ui fields object
+						var strCell = objUIData.Column + ',' + objUIData.Row;		// cell = 'col,row' (x.y)
+						fncDelete(strCell);
+					}
+					// get the new symbol's property object and store its address in the global descriptive objects array.
+					switch(document.getElementById("id_graph").value)
+					{
+						case 'startstop' :
+							g_arr_objSVGChildObjects.push(g_objFunctionsForComponents.StartStop());
+							break;
+						case 'decision' :
+							g_arr_objSVGChildObjects.push(g_objFunctionsForComponents.Decision());
+							break;
+						case 'process' :
+							g_arr_objSVGChildObjects.push(g_objFunctionsForComponents.Process());
+							break;
+						case 'io' :
+							g_arr_objSVGChildObjects.push(g_objFunctionsForComponents.IO());
+							break;
+						case 'connector' :
+							g_arr_objSVGChildObjects.push(g_objFunctionsForComponents.Connector());
+							break;
+						case 'opconnector' :
+							g_arr_objSVGChildObjects.push(g_objFunctionsForComponents.OPConnector());
+							break;	
+						case 'pivotpoint' :
+							g_arr_objSVGChildObjects.push(g_objFunctionsForComponents.PivotPoint());
+							break;
+						case 'flowlines' :					
+							g_arr_objSVGChildObjects.push(g_objFunctionsForComponents.Line());
+							break;
+						default :		
+					}					
+					g_nodeDrawGroup = document.createElementNS(g_strSVGNS, "g");	// create a group node to contain our symbol nodes.
+					g_nodeDrawGroup.setAttribute('id', 'id_nodeDrawGroup');
+					// Append ALL the requested graphs to the DOM.					
+					for(var i=0;i<g_arr_objSVGChildObjects.length;i++)	// populate the SVG node with our symbol nodes using the Node property from the symbol's object that the array g_arr_objSVGChildObjects[n] points to.
+					{
+						g_nodeDrawGroup.appendChild(g_arr_objSVGChildObjects[i].Node);
+					}
+					if ( g_nodeSVG.getElementById('id_nodeDrawGroup') ){ g_nodeSVG.getElementById('id_nodeDrawGroup').remove(); }	// remove the old node, if there is one.
+					g_nodeSVG.appendChild(g_nodeDrawGroup);	// append the new one.
+					document.getElementById("idDiv").innerHTML = null;	// clear the document div area before append, not the g_nodeSVG.
+					document.getElementById("idDiv").appendChild(g_nodeSVG);	// insert the (possibly updated) SVG node into DOM					
+					}
+				else
+				{
+					alert('You must choose a cell to draw in.');
+				}
+				return true;
+			}
+			function fncInit()
+			{	
+				// called by the body unload event to setup/initialise the working environment.
+				g_nodeSVG = fncNodeSVG();	// create an SVG node
+				document.getElementById("idDiv").appendChild(g_nodeSVG);	// insert SVG node into DOM. Note the div's innerHTML will be replaced with the updated g_nodeSVG in fncDraw()	
+				// Store the addresses of the functions required to build our symbols in a global var: convenience programming.
+				g_objFunctionsForComponents.Decision = fncDrawDecisionSymbol;
+				g_objFunctionsForComponents.StartStop = fncDrawStartStopSymbol;
+				g_objFunctionsForComponents.Line = fncDrawLineSymbol;
+				g_objFunctionsForComponents.Text = fncDrawTextSymbol;
+				g_objFunctionsForComponents.Process = fncDrawProcessSymbol;
+				g_objFunctionsForComponents.Connector = fncDrawConnectorSymbol;
+				g_objFunctionsForComponents.PivotPoint = fncDrawPivotPointSymbol;
+				g_objFunctionsForComponents.OPConnector = fncDrawOPConnectorSymbol;
+				g_objFunctionsForComponents.IO = fncDrawIOSymbol;
+				g_objFunctionsForComponents.CS = fncDrawCSSymbol;	// Comparison Symbols
+						
+				// handling the cell marker algorithm
+				//
+				// create the origin coordinate (top/left) for all cells in a 5 * 7 column/row matrix svg graph page.
+				for (var intRow=0;intRow<g_intMaxRows;intRow++)
+				{
+					for (var intCol=0;intCol<g_intMaxCols;intCol++)
+					{
+						var objCellOrigin = {};
+						objCellOrigin.Row =	intRow * (g_intRowHeight + g_intGap);
+						objCellOrigin.Col =	intCol * (g_intColumnWidth + g_intGap);			
+						g_arr_objCellOrigins[intCol + ',' + intRow] = objCellOrigin;
+					}
+				}	
+				// check if there has been a refresh/reload
+				if ( window.performance ) 
+				{
+					if (performance.navigation.type == performance.navigation.TYPE_RELOAD) 
+					{
+						 // alert( "This page is reloaded" );
+						 fncResetUI(null, true);
+					} 
+				}
+				else
+				{
+					alert('You may need to hold the control key down to initiate a complete page reload.');
+				}
+				// set the coordinates to null as the default: must be marked first.
+				document.getElementById('id_row').value = null;
+				document.getElementById('id_column').value = null;
+				// Get the x,y coordinates upon user click in svg space.
+				// adapted from:	Gavin Kistner,	http://phrogz.net	
+				//			
+				g_pt = g_nodeSVG.createSVGPoint();		// Create an SVGPoint where x and y are initialised to 0. Used in matrix transforms.
+				// add a listener for mouse click, shift_click and alt_click
+				g_nodeSVG.addEventListener
+				(
+					'click',
+					function(evt)
+					{
+						var loc = cursorPoint(evt);
+						if ( evt.shiftKey )
+						{
+							// update the 'To' ui col/row fields
+							fncSetToCell(loc);
+						}
+						else
+						{
+							if ( evt.altKey )
+							{
+								// delete the targeted symbol/line
+								if( evt.target.getAttribute('id') )
+								{
+									fncDelete(evt)
+								}							
+							}
+							else
+							{
+								// assume a plain mouse click
+								// mark the cell and update the col/row ui fields
+								fncMarkCell(loc);
+							}
+						}
+					},
+					false
+				);
+			}	// End of fncInit
+			
+			// End of General functions
+		</script>
+	</head>
+	<body onload='fncInit()'>
+		<div>
+			<h2 align='center'>Logic Flowchart Generator</h2>
+			<div style='width: 40%;'>
+				Graph	
+				<select id='id_graph' onchange='fncGraphSelected(this)'>
+				  <option value="startstop">Start/Stop</option>
+				  <option value="decision">Decision</option>
+				  <option value="process">Process</option>
+				  <option value="io">Input/Ouput</option>
+				  <option value="connector">Connectors</option>
+				  <option value="opconnector">Off Page Connector</option>
+				  <option value="pivotpoint">Pivot Point</option>
+				  <option value="flowlines">Flow Lines</option>
+				</select>
+				<button onclick='fncDraw()'>
+					Draw
+				</button>
+				<button id='id_preview' onclick='fncPreview()' style='float:right;'>
+						Preview
+				</button>
+				<span style='float:right;'>&nbsp;&nbsp;&nbsp;&nbsp;</span>
+				<button id='id_grid' status='on' onclick='fncGrid(this)' style='float:right;'>
+						Display Grid
+				</button>
+
+			</div>
+			<div style="display: inline-block; width: 100%">
+				<p style="display: inline-block;">
+					Column <input type='text' size='2' id='id_column' readonly='readonly'/>
+					Row	<input type='text' size='2' id='id_row' readonly='readonly'/>
+					<span id='id_span_text' style="display: inline;">
+						text	
+						<table id='id_text_lines' style="display: inline;">
+							<tr>
+								<td> <input type='text' size='15' maxlength='12' id='id_text_line_1' />
+							</tr>
+							<tr>
+								<td> <input type='text' size='15' maxlength='12' id='id_text_line_2'  />
+							</tr>
+							<tr>
+								<td> <input type='text' size='15' maxlength='12' id='id_text_line_3'  />
+							</tr>
+						</table>
+					</span>
+					<span id='id_span_lines' style='display: none'>
+						<span  style="display: inline-table">
+							<select id='id_point' >
+							  <option value="R">Right</option>
+							  <option value="B">Bottom</option>
+							  <option value="L">Left</option>
+							  <option value="T">Top</option>
+							</select>
+						</span>
+						To: 
+						<span id='id_span_column2' style="display: inline">
+							Column 
+							<input type='text' size='2' id='id_column2' readonly='readonly' />
+						</span>
+						<span id='id_span_row2' style="display: inline">
+							Row	
+							<input type='text' size='2' id='id_row2' readonly='readonly'/>
+						</span>
+						<span  style="display: inline-table">
+							<select id='id_point2' >
+							  <option value="R">Right</option>
+							  <option value="B">Bottom</option>
+							  <option value="L">Left</option>
+							  <option value="T">Top</option>
+							</select>
+						</span>
+					</span>
+					<span id='id_span_symbols' style="display: none;">
+						<span id='id_span_symbolS1' style="display: inline-table">
+							Right Symbol:
+							<select name='selectS' id='id_symbolR'>
+								<option value="blank" selected='true'>none</option>
+								<option value="yes">Yes</option>
+								<option value="no">No</option>
+								<option value="gt">&gt;</option>
+								<option value="lt">&lt;</option>
+								<option value="eq">=</option>
+								<option value="ne">&lt;&gt;</option>
+								<option value="ge">&gt;=</option>
+								<option value="le">&lt;=</option>
+							</select>
+						</span>
+						<span id='id_span_symbolS2' style="display: inline-table">
+							Bottom Symbol
+							<select name='selectS' id='id_symbolB'>
+								<option value="blank" selected='true'>none</option>
+								<option value="yes">Yes</option>
+								<option value="no">No</option>
+								<option value="gt">&gt;</option>
+								<option value="lt">&lt;</option>
+								<option value="eq">=</option>
+								<option value="ne">&lt;&gt;</option>
+								<option value="ge">&gt;=</option>
+								<option value="le">&lt;=</option>
+							</select>
+						</span>
+						<span id='id_span_symbolS3' style="display: inline-table">
+							LeftSymbol	
+							<select name='selectS' id='id_symbolL'>
+								<option value="blank" selected='true'>none</option>
+								<option value="yes">Yes</option>
+								<option value="no">No</option>
+								<option value="gt">&gt;</option>
+								<option value="lt">&lt;</option>
+								<option value="eq">=</option>
+								<option value="ne">&lt;&gt;</option>
+								<option value="ge">&gt;=</option>
+								<option value="le">&lt;=</option>
+							</select>
+						</span>
+					</span>
+				</p>
+			</div>
+		<div id='idDiv'></div>
+	</body>
+</html>
+		

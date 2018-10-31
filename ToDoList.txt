@@ -1,0 +1,5 @@
+To Do List
+
+1) Drag and drop symbols.
+2) Move a symbol from one grid to another
+3) Serialize and save code to allow for later modification.
