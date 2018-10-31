@@ -27,7 +27,7 @@ The code contains numerous examples -
 	5. User interaction with the svg graphs.  
 
 The source file *XMLFormat.js* is used to format, 'Pretty Print' style, conforming XML passed to it.  
-The resulting SVG code that is rendered in a new 'open'ed window, during the 'Preview' process, can be saved at the user's discretion.<br/ >
+The resulting SVG code that is rendered in a new 'open'ed window, during the 'Preview' process, can be saved at the user's discretion.
 The code is heavily annotated: maybe too much!
 		
 ## Table of Contents.  
