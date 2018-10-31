@@ -3,9 +3,11 @@
 ### Description.
 HTML and Javascript routines to draw, preview and save a logic flowchart coded in the SVG XML language standard.  The project was developed to sample coding SVG with Javascript: there are far better open source software drawing packages.
 	
-**For the User**<br/ >Allows the user to generate standard logic flowchart symbols, connectors and flow lines. The user has the option to preview the finished product in a separate tab/window and save the SVG code that created the image to a local file for later use.  
+**For the User**  
+Allows the user to generate standard logic flowchart symbols, connectors and flow lines. The user has the option to preview the finished product in a separate tab/window and save the SVG code that created the image to a local file for later use.  
 
-**For the Developer**:<br/ >The code contains numerous examples -  
+**For the Developer**:  
+The code contains numerous examples -  
 
 1. creating SVG using javascript such as
 	1. svg rect;
