@@ -28,6 +28,7 @@ The code contains numerous examples -
 
 The source file *XMLFormat.js* is used to format, 'Pretty Print' style, conforming XML passed to it.  
 The resulting SVG code that is rendered in a new 'open'ed window, during the 'Preview' process, can be saved at the user's discretion.  
+
 The code is heavily annotated: maybe too much!
 		
 ## Table of Contents.  
@@ -95,7 +96,7 @@ To *Move* a symbol:
 The menu line:  
 
 1. 'Graph' drop down list allows you to select the symbol you wish to paint in the selected grid, along with text and, in the case of a decision graph, any comparison characters that are present.
-	1. Stort/Stop draws an elliptical graph and is used to indicate the beginning/end of your logic.
+	1. Start/Stop draws an elliptical graph and is used to indicate the beginning/end of your logic.
 	2. 'Decision' draws a diamond shaped graph used to indicate a possible fork in the logic path.
 	3. 'Process' draws a rectangular graph to indicate some process to be executed.
 	4. 'Input/Output' draws a parallelogram to indicate an external device capable of allowing for the input or output of user supplied data.
