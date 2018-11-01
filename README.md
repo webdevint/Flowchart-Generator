@@ -75,7 +75,7 @@ To *Add* logic chart symbols to the grid, except for 'flow lines' - see step 6 :
 	3. holding the shift key down, click on the desired 'To' graph grid: the 'To' Column/Row fields are updated with the values of the selected cell;
 	4. fill in any information, on the menu line, you require. Some information is filled in for you.
 	5. click on the 'Draw' button;
-	6. repeat steps 1 - 5 as desired.  
+	6. repeat steps i - v as desired.  
 
 To *Delete* symbols:  
 
