@@ -71,10 +71,11 @@ To *Add* logic chart symbols to the grid, except for 'flow lines' - see step 6 :
 5. repeat steps 1 - 4 as desired.
 6. To use the 'flow lines' graph option:
 	1. click on a grid that contains a graph. This will be your 'From' symbol;
-	2. holding the shift key down, click on the desired 'To' graph grid: the 'To' Column/Row fields are updated with the values of the selected cell;
-	3. fill in any information, on the menu line, you require. Some information is filled in for you.
-	4. click on the 'Draw' button;
-	5. repeat steps 1 - 4 as desired.  
+	2. select 'flow lines' from the 'Graph' drop-down list;
+	3. holding the shift key down, click on the desired 'To' graph grid: the 'To' Column/Row fields are updated with the values of the selected cell;
+	4. fill in any information, on the menu line, you require. Some information is filled in for you.
+	5. click on the 'Draw' button;
+	6. repeat steps 1 - 5 as desired.  
 
 To *Delete* symbols:  
 
@@ -85,8 +86,8 @@ All text, including the comparison characters, belong to the symbol and therefor
 
 To *Modify* a symbol, or its contents:  
 
-1. select the grid containing a symbol: the symbols information is displayed;
-2. select a new graph - the old graph and it's flow lines will be deleted - or, change the data for the existing graph: the existing graph will be preserved and updated;
+1. select the grid containing a symbol: the symbol's information is displayed;
+2. select a new graph - the old graph and its flow lines will be deleted - or, change the data for the existing graph: the existing graph will be preserved and updated;
 3. click on the 'Draw' button.  
 
 To *Move* a symbol:  
@@ -104,10 +105,10 @@ The menu line:
 	6. 'Off Page Connector' draws a 5 sided symbol to indicate that logic continues on 'another page'.
 	7. 'Pivot Point' draws a small filled, unobtrusive circle or point to allow two connectors to continue path flow, without resorting to diagonal lines between other graphs.
 	8. 'Flow Lines' draws lines that show the direction of the path of logic between symbols.
-2. 'Column and Row' are a non-editable fields that are filled in by the process with information calculated from the currently selected grid. For flow lines they represent the 'From' symbol.
+2. 'Column and Row' are non-editable fields that are filled in by the process with information calculated from the currently selected grid. For flow lines they represent the 'From' symbol.
 3. 'Text' are editable fields that the user can use to display information within a symbol. There are three lines and they represent the order and location within the symbol where this information will be displayed.
 4. 'Right/Bottom/Left Symbol' is displayed as menu items when the 'Decision' graph is selected. They allow the user to attach comparison symbols around the decision symbol, as required.
-5. 'To Column/Row' is displayed as menu items when the 'Flow Lines' graph has been selected. They are filled when the user shift clicks on a grid.
+5. 'To Column/Row' is displayed as menu items when the 'Flow Lines' graph has been selected. They are filled in with the row/column values when the user shift clicks on a grid.
 6. 'Draw' draws the currently selected symbol and redraws all symbols currently active in this session.
 7. 'Display Grid' button toggles the hashed grid outline on and off.
 8. 'Preview' button opens a new tab displaying your flowchart with the rendered SVG code. You can *save* this pure SVG code by using your browser's 'file/save as' menu - the 'file/save as' currently only works in Firefox due to differences in implementation.  
