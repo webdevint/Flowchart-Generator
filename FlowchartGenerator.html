@@ -41,7 +41,7 @@
 			}
 
 			/***** For the Loader Icon *****/
-			/* Center the loader */
+			/* Place the loader */
 			#loader {
 			  position: absolute;
 			  left: 40%;
@@ -268,6 +268,7 @@
 			}
 			function fncDrawDecisionSymbol(objUIData)
 			{
+				// objUIData: an object specifying the content of the ui fields
 				// create a decision symbol starting at intMx, intMy
 				// returns a descriptive object for this particular symbol.
 				//
@@ -661,7 +662,7 @@
 			function fncDrawTextSymbol(objCellSymbolProperties, objUIData)
 			{
 				// Create text symbols using an svg "text" element constructor
-				// objCellSymbolProperties: the address of the symbol's desriptive object
+				// objCellSymbolProperties: the address of the parent symbol's desriptive object
 				// objUIData: the data in ui fields
 				// Note: all parent symbols, except for flow lines, contain three text nodes, empty or otherwise.				
 				var objProperties = {};
@@ -720,9 +721,9 @@
 			}
 			function fncDrawCSSymbol(objCellSymbolProperties, objUIData)
 			{
+				// objCellSymbolProperties: the address of the parent symbol's current desriptive object
+				// objUIData: an object specifying the content of the ui fields
 				// Create comparison text symbols using an svg "text" element constructor
-				// objCellSymbolProperties: the address of the symbol's desriptive object
-				// objUIData: the data in ui fields
 				// Note: all parent 'decision' symbols will contain 3 comparison symbols, blank or otherwise. One for each position: 'R'ight, 'B'ottom, 'L'eft.
 				
 				var arr_objXternText = [];	// array points to a single descriptive object for a given point
@@ -732,7 +733,7 @@
 					objCellSymbolProperties.NodeSymbolGroup.remove();	// delete the existing svg text group if it exists.
 				}
 			
-				// get the parms for the parent symbol
+				// get the required information from the parent symbol's descriptive object
 				var intTx = objCellSymbolProperties.Tx;
 				var intTy = objCellSymbolProperties.Ty;
 				var intLx = objCellSymbolProperties.Lx;
@@ -746,14 +747,15 @@
 				var intPy = 0;
 				var intSpacex = 5;
 				var intSpaceY = 10;
-				
-				// build arr_objXternText with ui data	
+			
+				// build arr_objXternText with ui data
 				var arr_SelectPointsList = ['R', 'B', 'L'];
-				var arr_SelectSymbolsList = document.getElementsByName("selectS");
+				var arr_SelectSymbolsList = [objUIData.SymbolR, objUIData.SymbolB, objUIData.SymbolL];
 				for (var i=0;i<arr_SelectPointsList.length;i++)
 				{
-					arr_objXternText[i] = {'point' : arr_SelectPointsList[i], 'symbol' : arr_SelectSymbolsList[i].options[arr_SelectSymbolsList[i].selectedIndex].text};
-				}						
+					arr_objXternText[i] = {'point' : arr_SelectPointsList[i], 'symbol' : arr_SelectSymbolsList[i]};
+				}
+
 				var nodeTextGroup = document.createElementNS(g_strSVGNS, "g");
 				var nodeTextLineT = null;
 				// loop through each object creating the required text node
@@ -766,6 +768,7 @@
 					switch(arr_objXternText[i].point)
 					{
 						case 'T':
+							// not currently implemented
 							intPx = intTx + 2*intSpacex;
 							intPy = intTy - intSpacex;
 							break;
@@ -919,12 +922,12 @@
 			function fncDelete(evt, objUIData)
 			{
 				// evt: the event object built when the alt-click key event occurred, or a string containing the id ('column,row') for the symbol.
-				// objUIData: the contents of the ui fields at the time of the call. Only passed in a non-event call: i.e. in the fncDraw function and fncLoadJSON
+				// objUIData: the contents of the ui fields at the time of the call. Only passed in a non-event call: i.e. in the fncDraw function
 				
 				// The alt-click key combo has been pressed or the function has been called with a string id ('column,row' - objProperties.Cell): 
 				//		remove the symbol and any flow lines pointing to it, if any, or a line graph itself.
 				
-				var strID = null;	// holds the strin id for the cell 'column.row'
+				var strID = null;	// holds the string id for the cell 'column.row'
 				var boolEvent = false;	// indicates that this was called from the alt-click event on a symbol
 				
 				// set strID accordingly
@@ -1030,9 +1033,9 @@
 				objUIData.Column2 = document.getElementById('id_column2').value;
 				objUIData.Row2 = document.getElementById('id_row2').value;
 				objUIData.Point2 = document.getElementById('id_point2').value;
-				objUIData.SymbolR = document.getElementById('id_symbolR').value;
-				objUIData.SymbolB = document.getElementById('id_symbolB').value;
-				objUIData.SymbolL = document.getElementById('id_symbolL').value;
+				objUIData.SymbolR = document.getElementById('id_symbolR').options[document.getElementById('id_symbolR').selectedIndex].text;;
+				objUIData.SymbolB = document.getElementById('id_symbolR').options[document.getElementById('id_symbolB').selectedIndex].text;;
+				objUIData.SymbolL = document.getElementById('id_symbolR').options[document.getElementById('id_symbolL').selectedIndex].text;;
 				
 				return objUIData;
 			}
@@ -1431,11 +1434,9 @@
 							  // rebuild a temporary descriptive objects array using the JSON string from the previously saved JSON file.
 								var arr_objSVGChildObjectsT = JSON.parse(strJsonStr);
 // this may have to be modified to allow multiple 'pages' (charts)					
-								// delete all existing Symbols, if any.
-								for(var i=0;i<arr_objSVGChildObjectsT.length;i++)
-								{
-									fncDelete(arr_objSVGChildObjectsT[i].Cell)
-								}
+								// Reset global descriptive object array and delete the HTML graph portion
+								if ( g_nodeSVG.getElementById('id_nodeDrawGroup') ){ g_nodeSVG.getElementById('id_nodeDrawGroup').remove(); }	// delete HTML
+								g_arr_objSVGChildObjects = []; // reset global descriptive objects array
 								// re-create all symbols using the information stored in the json string: in particular the objUIData object, and re-populate our global child objects array.
 								// need to sort the array in order to draw the Line graphs last as the symbols must exist in the from/to cells before drawing the line.
 								arr_objSVGChildObjectsT.sort(function(a, b) 
@@ -1453,7 +1454,7 @@
 								
 								for(var i=0;i<arr_objSVGChildObjectsT.length;i++)	// populate the SVG node with our symbol nodes using the Node property from the symbol's object that the array g_arr_objSVGChildObjects[n] points to.
 								{
-									g_strMarkedCell = arr_objSVGChildObjectsT[i].Cell;
+									g_strMarkedCell = arr_objSVGChildObjectsT[i].Cell;									
 									fncDraw(arr_objSVGChildObjectsT[i].UIData);
 								}									
 							}
