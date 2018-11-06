@@ -115,11 +115,7 @@ The menu line:
 9. 'Save' button saves a copy of the code used to create the flowchart in a file of your choice.
 10. 'Preview' button opens a new tab displaying your flowchart with the rendered SVG code. You can *save* this pure SVG code by using your browser's 'file/save as' menu - the 'file/save as' currently only works in Firefox due to differences in implementation.  
 
-Caution:  
-
-- This is the beta version of the project.
-- The process does not contain extensive error catching code.
-- Be sure that you have clicked the required grid by monitoring the From/To Column/Row fields.
+Caution:  - The process does not contain extensive error catching code.
 
 ## Files.  
 1. README.md	- This file.
