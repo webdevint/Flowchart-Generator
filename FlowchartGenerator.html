@@ -7,6 +7,79 @@
 			{
 				margin: 0px;
 			}
+						/***** For the Buttons *****/
+			label.btnLabel input[type="file"] 
+			{
+				position: fixed;
+				top: -1000px;
+			}
+			label.btnLabel input[type="button"] 
+			{
+				position: fixed;
+				top: -1000px;
+			}
+			/* Custom styling for Labels (buttons) */
+			.btnLabel 
+			{
+				border: 2px solid #AAA;
+				border-radius: 8px;
+				padding: 5px 5px;
+				margin: 2px;
+				background: #DDD;
+				display: inline-block;
+				font-size: 14px;
+				font-weight: 600;
+				font-family: arial;
+			}
+			.btnLabel:hover 
+			{
+				background: #CCC;
+			}
+			.btnLabel:active 
+			{
+				background: #CCF;
+			}
+
+			/***** For the Loader Icon *****/
+			/* Center the loader */
+			#loader {
+			  position: absolute;
+			  left: 40%;
+			  top: 25%;
+			  z-index: 1;
+			  margin: -75px 0 0 -75px;
+			  border: 16px solid #f3f3f3;
+			  border-radius: 50%;
+			  border-top: 16px solid #3498db;
+			  width: 25px;
+			  height: 25px;
+			  -webkit-animation: spin 2s linear infinite;
+			  animation: spin 2s linear infinite;
+			}
+			@-webkit-keyframes spin {
+			  0% { -webkit-transform: rotate(0deg); }
+			  100% { -webkit-transform: rotate(360deg); }
+			}
+			@keyframes spin {
+			  0% { transform: rotate(0deg); }
+			  100% { transform: rotate(360deg); }
+			}
+			/* Add animation to "page content" */
+			.animate-bottom {
+			  position: relative;
+			  -webkit-animation-name: animatebottom;
+			  -webkit-animation-duration: 1s;
+			  animation-name: animatebottom;
+			  animation-duration: 1s
+			}
+			@-webkit-keyframes animatebottom {
+			  from { bottom:-100px; opacity:0 } 
+			  to { bottom:0px; opacity:1 }
+			}
+			@keyframes animatebottom { 
+			  from{ bottom:-100px; opacity:0 } 
+			  to{ bottom:0; opacity:1 }
+			}
 		</style>
 		<script>
 			// Creates an svg string representing the Logic Flowchart designed by the user.
@@ -18,8 +91,8 @@
 		</script>
 		<script src="XMLFormat.js" async="false" type="text/javascript"></script>
 		<script>
-			// Javascript routines to draw. preview and save an SVG logic flowchart.
-			//	XMLFormat.js takes the current design and formats the resulting svg string for readability during the 'preview' process, which can then be saved for future use.
+			// Javascript routines to draw, preview and save/load an SVG logic flowchart.
+			//	XMLFormat.js takes the current design and formats the resulting svg string for readability during the 'preview' process, which can then be saved for future display.
 			//
 			// The window (panel) is visualised as containing 35 cells of equal size.
 			// The height of our graph is set at 8.5 in. wide by 11 in. high. - letter size.
@@ -57,6 +130,7 @@
 			var g_intGap = g_StdUnitLength;	// value used to allow for space around the graph symbols.
 			var g_intMaxCols = 5;
 			var g_intMaxRows = 7;
+			var g_intTextLineCount = 3;
 			var g_arr_objSVGChildObjects = [];	// an array within which each index points to an object whose properties describe the constructed symbol's group node and children.
 			var g_arrColumnCenters = [];	// used to store the horizontal pixel offset values from origin 0 that indicates the horizontal center of the symbol's square (cell).		
 			var g_intHypotenuseFactor = Math.sqrt(2);		// length factor used to calculate the hypotenuse for the decision symbol, if required: currently unused.
@@ -83,7 +157,9 @@
 				{
 					g_objOutputWindow.close();
 				}
-			});	
+			});
+			var objSerializer = new XMLSerializer();	// used when saving the JSON string
+			var objParser = new DOMParser();	// used when loading a JSON string
 			//			
 			// End of Globals/Immediate code
 			//
@@ -190,12 +266,11 @@
 				
 				return nodeSVG;
 			}
-			function fncDrawDecisionSymbol()
+			function fncDrawDecisionSymbol(objUIData)
 			{
 				// create a decision symbol starting at intMx, intMy
 				// returns a descriptive object for this particular symbol.
 				//
-				var objUIData = fncGetUIData();	// get ui (user interface) data from all fields.
 				var intMx = g_arrColumnCenters[objUIData.Column];	// set the x anchor coordinate  to the cell's top center.
 				var intMy = fncCalcYoffset(objUIData.Row);	// set the y anchor coordinate to the calculated offset from the svg node's origin.
 				var objProperties = {};	// will hold the descriptive properties for this particular graph: see below
@@ -218,6 +293,7 @@
 					nodePath.addEventListener('mouseout', fncMouseEvent, false);
 				nodePathGroup.appendChild(nodePath);
 				// add the descriptive properties to the local objProperties var.
+				objProperties.UIData = objUIData;
 				objProperties.Type = 'decision';
 				objProperties.Cell = objUIData.Column + ',' + objUIData.Row;
 				objProperties.Node = nodePathGroup;					// node address
@@ -236,12 +312,11 @@
 				return objProperties;	
 			}
 		
-			function fncDrawStartStopSymbol()
+			function fncDrawStartStopSymbol(objUIData)
 			{
 				// create a Start/Stop symbol using an svg "rect" element constructor, starting at intMx - g_StdUnitLength, intMy + .5*g_StdUnitLength
 				// returns a descriptive object for this particular symbol.
-				//		
-				var objUIData = fncGetUIData();
+				//			
 				var intMx = g_arrColumnCenters[objUIData.Column];
 				var intMy = fncCalcYoffset(objUIData.Row);
 				var objProperties = {};
@@ -262,6 +337,7 @@
 					nodeRect.addEventListener('mouseout', fncMouseEvent, false);
 				nodeRectGroup.appendChild(nodeRect);
 				// add the descriptive properties to the local objProperties var.
+				objProperties.UIData = objUIData;
 				objProperties.Type = 'startstop';
 				objProperties.Cell = objUIData.Column + ',' + objUIData.Row;
 				objProperties.Node = nodeRectGroup;					// node address
@@ -278,12 +354,11 @@
 				
 				return objProperties;		
 			}
-			function fncDrawIOSymbol()
+			function fncDrawIOSymbol(objUIData)
 			{
 				// create a Process symbol using an svg "polygon" element constructor, starting at intMx - g_StdUnitLength + intOffset, intMy
 				// returns a descriptive object for this particular symbol.
 				//
-				var objUIData = fncGetUIData();	
 				var intMx = g_arrColumnCenters[objUIData.Column];
 				var intMy = fncCalcYoffset(objUIData.Row);
 				var objProperties = {};
@@ -301,6 +376,7 @@
 					nodeRect.addEventListener('mouseout', fncMouseEvent, false);
 				nodeRectGroup.appendChild(nodeRect);
 				// add the descriptive properties to the local objProperties var.
+				objProperties.UIData = objUIData;
 				objProperties.Type = 'io';
 				objProperties.Cell = objUIData.Column + ',' + objUIData.Row;
 				objProperties.Node = nodeRectGroup;					// node address
@@ -317,12 +393,11 @@
 				
 				return objProperties;		
 			}
-			function fncDrawProcessSymbol()
+			function fncDrawProcessSymbol(objUIData)
 			{
 				// create a Process symbol using an svg "rect" element constructor, starting at intMx - g_StdUnitLength, intMy
 				// returns a descriptive object for this particular symbol.
 				//
-				var objUIData = fncGetUIData();	// get ui data
 				var intMx = g_arrColumnCenters[objUIData.Column];
 				var intMy = fncCalcYoffset(objUIData.Row);
 				var objProperties = {};
@@ -341,6 +416,7 @@
 					nodeRect.addEventListener('mouseout', fncMouseEvent, false);
 				nodeRectGroup.appendChild(nodeRect);
 				// add the descriptive properties to the local objProperties var.
+				objProperties.UIData = objUIData;
 				objProperties.Type = 'process';
 				objProperties.Cell = objUIData.Column + ',' + objUIData.Row;
 				objProperties.Node = nodeRectGroup;					// node address
@@ -357,12 +433,11 @@
 				
 				return objProperties;		
 			}
-			function fncDrawLineSymbol()
+			function fncDrawLineSymbol(objUIData)
 			{		
 				// Create a Line symbol using an svg "line" element constructor from intMx,intMy to intX2,intY2
 				// returns a descriptive object for this particular symbol.
 				//
-				var objUIData = fncGetUIData();
 				var objProperties = {};
 				
 				// set the from/to cell identifiers ("col,row") e.g.: "4,1"
@@ -428,7 +503,8 @@
 					nodeLine.addEventListener('mouseout', fncMouseEvent, false);
 				nodeLineGroup.appendChild(nodeLine);
 				// add the descriptive properties to the local objProperties var.
-				objProperties.Type = 'lines';
+				objProperties.UIData = objUIData;
+				objProperties.Type = 'flowlines';
 				objProperties.Cell = '' + g_intLineID++;			// unique id for flow lines.
 				objProperties.CellPair = { FromCell: strFromCell, ToCell:  strToCell };	// we need to keep track of which symbols the flow lines point to/from
 				objProperties.Node = nodeLineGroup;					// node address
@@ -441,12 +517,11 @@
 		
 				return objProperties;		
 			}
-			function fncDrawConnectorSymbol()
+			function fncDrawConnectorSymbol(objUIData)
 			{		
 				// create a Connector symbol using an svg "circle" element constructor, centered at intMx, intMy + g_StdUnitLength
 				// returns a descriptive object for this particular symbol.
 				//
-				var objUIData = fncGetUIData();	// get ui data
 				var intMx = g_arrColumnCenters[objUIData.Column];
 				var intMy = fncCalcYoffset(objUIData.Row);
 				var objProperties = {};
@@ -465,6 +540,7 @@
 				nodeConnectorGroup.appendChild(nodeCircle);
 
 				// add the descriptive properties to the local objProperties var.
+				objProperties.UIData = objUIData;
 				objProperties.Type = 'connector';
 				objProperties.Cell = objUIData.Column + ',' + objUIData.Row;
 				objProperties.Node = nodeConnectorGroup;			// node address
@@ -484,12 +560,11 @@
 			
 				return objProperties;
 			}
-			function fncDrawOPConnectorSymbol()
+			function fncDrawOPConnectorSymbol(objUIData)
 			{		
 				// create an Off Page Connector symbol using an svg "map" element constructor, starting at intMx, intMy + .625 * g_StdUnitLength
 				// returns a descriptive object for this particular symbol.
 				//
-				var objUIData = fncGetUIData();	// get ui data
 				var intMx = g_arrColumnCenters[objUIData.Column];
 				var intMy = fncCalcYoffset(objUIData.Row);
 				var objProperties = {};
@@ -519,6 +594,7 @@
 				nodeOPConnectorGroup.appendChild(nodePath);
 
 				// add the descriptive properties to the local objProperties var.
+				objProperties.UIData = objUIData;
 				objProperties.Type = 'opconnector';
 				objProperties.Cell = objUIData.Column + ',' + objUIData.Row;
 				objProperties.Node = nodeOPConnectorGroup;			// node address
@@ -535,12 +611,11 @@
 			
 				return objProperties;
 			}
-			function fncDrawPivotPointSymbol()
+			function fncDrawPivotPointSymbol(objUIData)
 			{		
 				// create a pivot point  symbol using an svg "circle" element constructor, centered at intMx, intMy + g_StdUnitLength
 				// returns a descriptive object for this particular symbol.
 				//
-				var objUIData = fncGetUIData();	// get ui data
 				var intMx = g_arrColumnCenters[objUIData.Column];
 				var intMy = fncCalcYoffset(objUIData.Row);
 				var objProperties = {};
@@ -560,6 +635,7 @@
 				nodePivotPointGroup.appendChild(nodeCircle);
 
 				// add the descriptive properties to the local objProperties var.
+				objProperties.UIData = objUIData;
 				objProperties.Type = 'pivotpoint';
 				objProperties.Cell = objUIData.Column + ',' + objUIData.Row;
 				objProperties.Node = nodePivotPointGroup;						// node address
@@ -587,24 +663,14 @@
 				// Create text symbols using an svg "text" element constructor
 				// objCellSymbolProperties: the address of the symbol's desriptive object
 				// objUIData: the data in ui fields
-				// Note: all parent symbols, except for flow lines, contain three text nodes, empty or otherwise.
-				
+				// Note: all parent symbols, except for flow lines, contain three text nodes, empty or otherwise.				
 				var objProperties = {};
 				
 				// delete the existing "NodeTextGroup" property from the Symbol's descriptive object, if it exists.			
 				if ( objCellSymbolProperties.hasOwnProperty('NodeTextGroup') )	
 				{
 					objCellSymbolProperties.NodeTextGroup.remove();	
-				}				
-				// collect the values of the ui's input nodes into an array and store a copy in the parent symbol's properties.
-				var arr_strInputNodes = document.getElementById('id_text_lines').getElementsByTagName("input");
-				var strID = "id_text_line_";	// the prefix for the id's for the input elements in the ui.
-				var arr_strText = [];
-				for (var i=0;i<arr_strInputNodes.length;i++)
-				{
-					arr_strText[i] = arr_strInputNodes[i].value;	// get value from ui input element: may be empty.
-				}
-						
+				}					
 				// establish the x,y coordinates from the passed symbol's descriptive object
 				var intTx = objCellSymbolProperties.Tx;	// top x center coordinate
 				var intTy = objCellSymbolProperties.Ty;	// top y
@@ -618,10 +684,10 @@
 				var intStartLinePtx = 0;	// the x coordinate for the beginning of the text
 				var intStartLinePt2y = intCenterPty;	// the y coordinate for the beginning of the text
 				var strStringLine = '';	// the text
-				for(var i=0;i<arr_strText.length;i++)
+				for(var i=0;i<g_intTextLineCount;i++)
 				{
 					nodeTextLineT = document.createElementNS(g_strSVGNS, "text");
-						strStringLine = arr_strText[i];
+						strStringLine = objUIData['TextLine' + (i + 1)];			
 						intCenterCharacter = Math.ceil(strStringLine.length / 2);
 						intStartLinePtx = intTx - ( intCenterCharacter * g_strFontSize/g_FontWidthRatio );
 						// adjust the y coordinate to match the ui's order.
@@ -643,10 +709,10 @@
 						nodeTextLineT.setAttribute('style', 'font-weight: bold; font-family: ' + g_strFontFamily + ' font-size: ' + g_strFontSize + 'px ;');	// for svg the unit identifier must be specified.
 						nodeTextLineT.textContent = strStringLine;
 					nodeTextGroup.appendChild(nodeTextLineT); 
-				}
+				}				
 					// set/reset the descriptive	object for this node
 					objProperties.Node = nodeTextGroup;
-					objProperties.Lines = {line_1 : objUIData.TextLine1, line_2 : objUIData.TextLine2, line_3 : objUIData.TextLine3 };	// every parent'ass descriptive object will have 3 text nodes.
+					objProperties.Lines = {line_1 : objUIData.TextLine1, line_2 : objUIData.TextLine2, line_3 : objUIData.TextLine3 };	// need to store a copy so that we can reset the UI text fields when the user clicks on an occupied cell: see fncResetUI
 					objCellSymbolProperties.NodeTextGroup = objProperties;	// store copy of this node's descriptive properties in its parent's group node.
 					objCellSymbolProperties.Node.appendChild(nodeTextGroup);	// add the text line node Group to its parent's node Group in the DOM.
 				
@@ -799,31 +865,40 @@
 					document.getElementById('id_row2').value = arr_strCell[1];
 				}
 			}
-			function fncDeleteSymbol(strID, i)
+			function fncDeleteSymbol(strID, i, boolEvent, objUIData)
 			{
-				var arr_IDs = [];
+				// strID: the id for this symbol 'column,row'
+				// i: the index in the global array g_arr_objSVGChildObjects where a match was found for the symbol currently in the cell.
+				// boolEvent: true if this was called from the result of an alt-click event
+				// objUIData: the data in the ui fields at the time of the call.
+
 				// it's a graph (symbol) other than type 'line'.
-				// check the line's to see if they match either to/from with this symbol's id.
+				// however, check the line symbols to see if they match either to/from with this symbol's id.
 				//
 				// get a collection of all the line nodes.
-				// note: for flow lines the 'Cell. descriptive object property and the 'id' are assigned a unique value when constructed and thus do not conform to the standard symbols id and cell properties of 'col,row'.
+				// note: for flow lines the 'Cell' descriptive object property and the 'id' are assigned a unique value when constructed and thus do not conform to the standard symbols id and cell properties of 'col,row'.
+				
+				var arr_IDs = [];	// holds the id's to be used to determine which indexes are to be removed (splice'd) from the global array.
 				var arr_lines = document.getElementsByTagName("line");
-				for ( var j=0;j<arr_lines.length;j++ )	// iterate through all the line nodes looking for a match on a cell's unique id.
+				if ( boolEvent || objUIData.Graph !== g_arr_objSVGChildObjects[i].Type )	// only remove the line graphs to/from this symbol if it was called from an alt-click event or a change in symbol types for this cell
 				{
-					for ( var k=0;k<g_arr_objSVGChildObjects.length;k++ )	// iterate through the currently built symbols (graphs) descriptive objects
+					for ( var j=0;j<arr_lines.length;j++ )	// iterate through all the line nodes looking for a match on a cell's unique id.
 					{
-						if ( arr_lines[j].getAttribute('id') == g_arr_objSVGChildObjects[k].Cell )	// we found a line node matching a built line graph's descriptive object cell property.
+						for ( var k=0;k<g_arr_objSVGChildObjects.length;k++ )	// iterate through the currently built symbols (graphs) descriptive objects
 						{
-							// does 	this built object's descriptive 'FromCell' or 'ToCell' property match the currently selected cell which is destined to be deleted?, if so, we need to delete the flow line graphs associated with it.
-							if ( g_arr_objSVGChildObjects[k].CellPair.FromCell == strID || g_arr_objSVGChildObjects[k].CellPair.ToCell == strID )
+							if ( arr_lines[j] && arr_lines[j].getAttribute('id') == g_arr_objSVGChildObjects[k].Cell )	// if we haven't already deleted the line then, we found a line node matching a built line graph's descriptive object cell property.
 							{
-								if ( g_arr_objSVGChildObjects[k] )
+								// does 	this built object's descriptive 'FromCell' or 'ToCell' property match the currently selected cell which is destined to be deleted?, if so, we need to delete the flow line graphs associated with it.
+								if ( g_arr_objSVGChildObjects[k].CellPair.FromCell == strID || g_arr_objSVGChildObjects[k].CellPair.ToCell == strID )
 								{
-									g_arr_objSVGChildObjects[k].Node.remove();	// remove from DOM if it exists
-								}
-								if ( !arr_IDs.includes(g_arr_objSVGChildObjects[k].Cell) )
-								{
-									arr_IDs.push(g_arr_objSVGChildObjects[k].Cell);	// push onto array if not already there: defer the removal from the array g_arr_objSVGChildObjects.
+									if ( g_arr_objSVGChildObjects[k] )
+									{
+										g_arr_objSVGChildObjects[k].Node.remove();	// remove from DOM if it exists
+									}
+									if ( !arr_IDs.includes(g_arr_objSVGChildObjects[k].Cell) )
+									{
+										arr_IDs.push(g_arr_objSVGChildObjects[k].Cell);	// push onto array if not already there: defer the removal from the array g_arr_objSVGChildObjects.
+									}
 								}
 							}
 						}
@@ -841,18 +916,25 @@
 					}
 				}	
 			}
-			function fncDelete(evt) 	
+			function fncDelete(evt, objUIData)
 			{
-				// The alt-click key combo has been pressed or the function has been called from fncDraw: 
+				// evt: the event object built when the alt-click key event occurred, or a string containing the id ('column,row') for the symbol.
+				// objUIData: the contents of the ui fields at the time of the call. Only passed in a non-event call: i.e. in the fncDraw function and fncLoadJSON
+				
+				// The alt-click key combo has been pressed or the function has been called with a string id ('column,row' - objProperties.Cell): 
 				//		remove the symbol and any flow lines pointing to it, if any, or a line graph itself.
-				// evt: the event object built when the alt-click key event occurred, or a string containing the id for the symbol.
-				var strID = null;
+				
+				var strID = null;	// holds the strin id for the cell 'column.row'
+				var boolEvent = false;	// indicates that this was called from the alt-click event on a symbol
+				
+				// set strID accordingly
 				if ( typeof evt === 'string' )
 				{
 					strID = evt;
 				}
 				else
 				{
+					boolEvent = true;
 					strID = evt.target.getAttribute('id');
 				}
 				for ( var i=0;i<g_arr_objSVGChildObjects.length;i++ )	// iterate through all the current symbol objects looking for a match using the object's Cell property
@@ -868,7 +950,7 @@
 								g_arr_objSVGChildObjects.splice(i, 1);	// remove from build array
 								break;
 							default :
-								fncDeleteSymbol(strID, i);
+								fncDeleteSymbol(strID, i, boolEvent, objUIData);	// delete the symbol and possibly any Line graphs to/from it, in preparation for a rebuild for this cell.
 								break;
 						} // End of Switch
 						break;	// terminate loop after found
@@ -935,7 +1017,7 @@
 			}
 			function fncGetUIData()
 			{
-			// collect and return an object containing the values for all ui fields except the draw and preview buttons.
+			// collect and return an object containing the values for all ui fields except the buttons other than 'grid'.
 				var objUIData = {};	// currently 17 props
 				objUIData.Graph = document.getElementById('id_graph').value;
 				objUIData.Status = document.getElementById('id_grid').value;
@@ -981,10 +1063,11 @@
 				return g_pt.matrixTransform(g_nodeSVG.getScreenCTM().inverse());
 			}
 			function fncIndexOf(HTMLCollection, strValue)
-			{
-				// returns the option node within the select element that matches the option's value attribute.
+			{				
 				// HTMLCollection: a collection of the 'options' elements
 				// strValue: a string representing the search criteria
+				// returns the option node within the select element that matches the option's value attribute.
+				
 				var intIndex = null;
 				for( var i=0;i<HTMLCollection.length;i++ )
 				{
@@ -997,10 +1080,10 @@
 				return intIndex;
 			}
 			function fncResetUI(objSymBolObject, boolReset)
-			{			
-				// reset the display to its original state: first - total zero reset then reset again using symbol's descriptive object data, if there is a symbol present within the cell.
+			{							
 				// objSymBolObject: an object representing a built symbol
 				// boolReset: boolean used to determine whether to reset this portion of the symbol.
+				// reset the display to its original state: first - total zero reset then reset again using symbol's descriptive object data, if there is a symbol present within the cell.
 				
 				// for the display:
 				document.getElementById("id_span_text").setAttribute('style', 'display: inline;');
@@ -1040,7 +1123,7 @@
 				// End of original state reset
 				
 				// Start of reset for symbol if found in cell
-				if(objSymBolObject !== null)
+				if( objSymBolObject !== null && objSymBolObject.Type !== 'flowlines' )
 				{	
 					// objSymBolObject:	contains the descriptive properties of the enclosed symbol, if ther is one.
 					//
@@ -1050,9 +1133,11 @@
 					document.getElementById("id_text_lines").setAttribute('style', 'display: inline-table;');
 					document.getElementById("id_span_symbols").setAttribute('style', 'display: none;');						
 					// reset appropriate ui feilds
+
 					document.getElementById('id_text_line_1').value = objSymBolObject.NodeTextGroup.Lines.line_1;
 					document.getElementById('id_text_line_2').value = objSymBolObject.NodeTextGroup.Lines.line_2;
 					document.getElementById('id_text_line_3').value = objSymBolObject.NodeTextGroup.Lines.line_3;
+					
 					switch(objSymBolObject.Type)
 					{
 						case 'decision' :
@@ -1069,9 +1154,9 @@
 				}
 			}
 			function fncMarkCell(loc)
-			{
-				// Change the cell's rectangle to solid border and reset ui fields for this symbol from its descriptive object properties, if it exists.			
+			{						
 				// loc: an object representing a point in the svg space where the user clicked.
+				// Change the cell's rectangle to solid border and reset ui fields for this symbol from its descriptive object properties, if it exists.	
 				
 				var intLocX = Math.ceil(loc.x);
 				var intLocY = Math.ceil(loc.y);
@@ -1100,9 +1185,9 @@
 				fncResetUI(objSymBolObject, true);
 			}
 			function fncGraphSelected(objSelect)
-			{
-				// display the appropriate ui fields for this symbol and reset their respective ui fields to their original state.
+			{				
 				// objSelect: an object representing an element in the DOM.
+				// display the appropriate ui fields for this symbol and reset their respective ui fields to their original state.
 				
 				fncResetUI(null, false);	// reset the UI fields to their original state
 				// reset appropriate ui fields
@@ -1129,9 +1214,16 @@
 				}
 				
 			}
-			function fncDraw()
+			function fncDraw(objUIData)
 			{
-				// build and save the currently selected symbol and add it plus all others currently saved (pre-built) to the DOM.
+				// objUIData:	if not null then, an object containing ui field data passed to us: i.e. the load process - fncLoadJSON
+				// build and save the 'currently selected' symbol and add it plus all others currently saved (pre-built) to the DOM.
+				
+				if ( objUIData === null)
+				{
+					objUIData = fncGetUIData();	// get current UI fields data if it was not passed to us.				
+				}
+				// there must be an identified cell in order to proceed.
 				if ( g_strMarkedCell.length > 0 )
 				{
 					// Remove the marker rect 'use' node, if it exists
@@ -1140,39 +1232,38 @@
 						g_nodeSVG.getElementById('id_Use').remove();	// remove 'use' node from DOM
 						g_strMarkedCell = '';	// reset marked cell indicator 
 					}
-					if(document.getElementById("id_graph").value !== 'flowlines')
+					if( objUIData.Graph !== 'flowlines')
 					{
 						// remove the symbol node contained in this cell, if one exists, from both the global descriptive objects array and from the DOM in preparation for a re-build.
-						var objUIData = fncGetUIData();	// get a copy of the ui fields object
 						var strCell = objUIData.Column + ',' + objUIData.Row;		// cell = 'col,row' (x.y)
-						fncDelete(strCell);
+						fncDelete(strCell, objUIData);
 					}
-					// get the new symbol's property object and store its address in the global descriptive objects array.
-					switch(document.getElementById("id_graph").value)
+					// get the new symbol's property object and store its address in the global descriptive objects array.					
+					switch(objUIData.Graph)
 					{
 						case 'startstop' :
-							g_arr_objSVGChildObjects.push(g_objFunctionsForComponents.StartStop());
+							g_arr_objSVGChildObjects.push(g_objFunctionsForComponents.StartStop(objUIData));
 							break;
 						case 'decision' :
-							g_arr_objSVGChildObjects.push(g_objFunctionsForComponents.Decision());
+							g_arr_objSVGChildObjects.push(g_objFunctionsForComponents.Decision(objUIData));
 							break;
 						case 'process' :
-							g_arr_objSVGChildObjects.push(g_objFunctionsForComponents.Process());
+							g_arr_objSVGChildObjects.push(g_objFunctionsForComponents.Process(objUIData));
 							break;
 						case 'io' :
-							g_arr_objSVGChildObjects.push(g_objFunctionsForComponents.IO());
+							g_arr_objSVGChildObjects.push(g_objFunctionsForComponents.IO(objUIData));
 							break;
 						case 'connector' :
-							g_arr_objSVGChildObjects.push(g_objFunctionsForComponents.Connector());
+							g_arr_objSVGChildObjects.push(g_objFunctionsForComponents.Connector(objUIData));
 							break;
 						case 'opconnector' :
-							g_arr_objSVGChildObjects.push(g_objFunctionsForComponents.OPConnector());
+							g_arr_objSVGChildObjects.push(g_objFunctionsForComponents.OPConnector(objUIData));
 							break;	
 						case 'pivotpoint' :
-							g_arr_objSVGChildObjects.push(g_objFunctionsForComponents.PivotPoint());
+							g_arr_objSVGChildObjects.push(g_objFunctionsForComponents.PivotPoint(objUIData));
 							break;
 						case 'flowlines' :					
-							g_arr_objSVGChildObjects.push(g_objFunctionsForComponents.Line());
+							g_arr_objSVGChildObjects.push(g_objFunctionsForComponents.Line(objUIData));
 							break;
 						default :		
 					}					
@@ -1180,14 +1271,14 @@
 					g_nodeDrawGroup.setAttribute('id', 'id_nodeDrawGroup');
 					// Append ALL the requested graphs to the DOM.					
 					for(var i=0;i<g_arr_objSVGChildObjects.length;i++)	// populate the SVG node with our symbol nodes using the Node property from the symbol's object that the array g_arr_objSVGChildObjects[n] points to.
-					{
+					{					
 						g_nodeDrawGroup.appendChild(g_arr_objSVGChildObjects[i].Node);
 					}
 					if ( g_nodeSVG.getElementById('id_nodeDrawGroup') ){ g_nodeSVG.getElementById('id_nodeDrawGroup').remove(); }	// remove the old node, if there is one.
 					g_nodeSVG.appendChild(g_nodeDrawGroup);	// append the new one.
 					document.getElementById("idDiv").innerHTML = null;	// clear the document div area before append, not the g_nodeSVG.
 					document.getElementById("idDiv").appendChild(g_nodeSVG);	// insert the (possibly updated) SVG node into DOM					
-					}
+				}
 				else
 				{
 					alert('You must choose a cell to draw in.');
@@ -1276,15 +1367,113 @@
 					},
 					false
 				);
+				// add the event for a 'load'
+				objLoadBtn = document.getElementById("id_btnLoadJSON");
+				objFileInput = document.getElementById("id_LoadJSON");
+				objLoadBtn.addEventListener("click", function (e) 
+				{
+					if (objFileInput) 
+					{
+						objFileInput.click();
+					}
+				}, false);
+				
 			}	// End of fncInit
-			
+			function fncReplacer(key, value)
+			{
+				// called by JSON.stringify in fncSerializeArray function
+				// we need to use the browser's XMLSerializer to serialize this particular object rather than JSON's stringify.
+				var strValue = value;
+				if( key == 'Node' )
+				{				
+					var strValue = objSerializer.serializeToString(value);	// serialize (flatten to a string) the XML object
+				}
+				return strValue;
+			}
+			function fncSerializeArray(arr_objChildObjects)
+			{
+				if ( arr_objChildObjects.length > 0 )
+				{
+					strJsonStr = JSON.stringify(arr_objChildObjects, fncReplacer); // use JSON's stringify and the replacer function to serialize the array of objects to a JSON string in preparation for a save to text (.json) file.
+				}				
+				return strJsonStr;
+			}	
+			function fncSaveJSON()
+			{
+				// Save the JSON string to a local file
+				//
+				var strJsonStr = fncSerializeArray(g_arr_objSVGChildObjects);	// convert the contents of the array to a JSON string				
+				// create a blob from the single item array containing our JSON string
+				var svg_blob = new Blob([strJsonStr],{'type': 'application/octet-stream'});	// could use type : 'application/json'} but, we only want to save not necessarily view; however, the 'save' button in what presumably is the built-in JSON viewer code is innefective!
+				var url = URL.createObjectURL(svg_blob);	// create an URL object from our blob, that can be used anywhere an URL is required.
+				var svg_win = window.open(url, "svg_win");	// open a window using our blob (data) as the url's payload: application/octet-stream
+			}
+			function fncLoadJSON(objFileList)
+			{	
+				// objFileList: a Filelist object created through the user Input ui of type=file
+
+				// fetch the file containing the JSON string, parse it back to an array of description objects
+				if (objFileList.length) 	// if there was a file selected
+				{
+					var url = URL.createObjectURL(objFileList[0]);	// create an object URL using the first file object found
+				
+					fetch(url).then(function(response) 
+					{
+					  if(response.ok) 
+					  {
+						 return response.text();
+					  }
+					  throw new Error('Network response was not ok.');
+					}).then(function(strJsonStr) 
+						{ 
+						  try
+							{
+							  // rebuild a temporary descriptive objects array using the JSON string from the previously saved JSON file.
+								var arr_objSVGChildObjectsT = JSON.parse(strJsonStr);
+// this may have to be modified to allow multiple 'pages' (charts)					
+								// delete all existing Symbols, if any.
+								for(var i=0;i<arr_objSVGChildObjectsT.length;i++)
+								{
+									fncDelete(arr_objSVGChildObjectsT[i].Cell)
+								}
+								// re-create all symbols using the information stored in the json string: in particular the objUIData object, and re-populate our global child objects array.
+								// need to sort the array in order to draw the Line graphs last as the symbols must exist in the from/to cells before drawing the line.
+								arr_objSVGChildObjectsT.sort(function(a, b) 
+								{
+								  if (a.Type !== 'flowlines' ) 
+								  {
+									 return -1;
+								  }
+								  if (a.Type === 'flowlines') 
+								  {
+									 return 1;
+								  }
+								  return 0;	// equal
+								});
+								
+								for(var i=0;i<arr_objSVGChildObjectsT.length;i++)	// populate the SVG node with our symbol nodes using the Node property from the symbol's object that the array g_arr_objSVGChildObjects[n] points to.
+								{
+									g_strMarkedCell = arr_objSVGChildObjectsT[i].Cell;
+									fncDraw(arr_objSVGChildObjectsT[i].UIData);
+								}									
+							}
+							catch(e)
+							{
+								alert('An error occured while parsing the contents of the JSON file: ' + e.message);
+							}
+						}).catch(function(error) 
+							{
+								alert('There has been a problem with your fetch operation: ' + error.message);
+							});
+				}
+			}
 			// End of General functions
 		</script>
 	</head>
 	<body onload='fncInit()'>
-		<div>
+		<div style='width: 50%;'>
 			<h2 align='center'>Logic Flowchart Generator</h2>
-			<div style='width: 40%;'>
+			<div>
 				Graph	
 				<select id='id_graph' onchange='fncGraphSelected(this)'>
 				  <option value="startstop">Start/Stop</option>
@@ -1296,17 +1485,25 @@
 				  <option value="pivotpoint">Pivot Point</option>
 				  <option value="flowlines">Flow Lines</option>
 				</select>
-				<button onclick='fncDraw()'>
+				<button class="btnLabel" onclick='fncDraw(null)'>
 					Draw
 				</button>
-				<button id='id_preview' onclick='fncPreview()' style='float:right;'>
+				<button class="btnLabel" id='id_preview' onclick='fncPreview()' style='float:right;'>
 						Preview
 				</button>
 				<span style='float:right;'>&nbsp;&nbsp;&nbsp;&nbsp;</span>
-				<button id='id_grid' status='on' onclick='fncGrid(this)' style='float:right;'>
+				<button class="btnLabel" id='id_SaveJSON' onclick='fncSaveJSON()' style='float:right;'>
+						Save
+				</button>
+				<span style='float:right;'>&nbsp;&nbsp;&nbsp;&nbsp;</span>
+				<input type="file" id="id_LoadJSON" style="display:none" onchange="fncLoadJSON(this.files)">
+				<button class="btnLabel" id='id_btnLoadJSON'  style='float:right;'>
+						Load
+				</button>
+				<span style='float:right;'>&nbsp;&nbsp;&nbsp;&nbsp;</span>
+				<button class="btnLabel" id='id_grid' status='on' onclick='fncGrid(this)' style='float:right;'>
 						Display Grid
 				</button>
-
 			</div>
 			<div style="display: inline-block; width: 100%">
 				<p style="display: inline-block;">
@@ -1399,6 +1596,8 @@
 					</span>
 				</p>
 			</div>
+			<div id="loader" style='display: none;'></div>
+		</div>
 		<div id='idDiv'></div>
 	</body>
 </html>

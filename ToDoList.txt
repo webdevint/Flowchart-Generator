@@ -2,4 +2,6 @@ To Do List
 
 1) Drag and drop symbols.
 2) Move a symbol from one grid to another
-3) Serialize and save code to allow for later modification.
+3) (done) Serialize and save code to allow for later modification.
+4) Change UI display to SVG.
+5) Allow for more than one page of graphics.

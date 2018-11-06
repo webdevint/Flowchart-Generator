@@ -1,10 +1,10 @@
 # Logic Flowchart Generator
 
 ### Description.
-HTML and Javascript routines to draw, preview and save a logic flowchart coded in the SVG XML language standard.  The project was developed to sample coding SVG with Javascript: there are far better open source software drawing packages.
+HTML and Javascript routines to draw, preview and save/load a logic flowchart coded in the SVG XML language standard.  The project was developed to sample coding SVG with Javascript: there are far better open source software drawing packages.
 	
 **For the User**  
-Allows the user to generate standard logic flowchart symbols, connectors and flow lines. The user has the option to preview the finished product in a separate tab/window and save the SVG code that created the image to a local file for later use.  
+Allows the user to generate standard logic flowchart symbols, connectors and flow lines. The user has the option to preview the finished product in a separate tab/window and save the SVG code that created the image to a local file for later display.  
 
 **For the Developer**:  
 The code contains numerous examples -  
@@ -27,7 +27,7 @@ The code contains numerous examples -
 	5. User interaction with the svg graphs.  
 
 The source file *XMLFormat.js* is used to format, 'Pretty Print' style, conforming XML passed to it.  
-The resulting SVG code that is rendered in a new 'open'ed window, during the 'Preview' process, can be saved at the user's discretion.  
+The resulting SVG code that is rendered in a new 'open'ed window, during the 'Preview' process, can be saved, for later display, at the user's discretion.  
 
 The code is heavily annotated: maybe too much!
 		
@@ -111,7 +111,9 @@ The menu line:
 5. 'To Column/Row' is displayed as menu items when the 'Flow Lines' graph has been selected. They are filled in with the row/column values when the user shift clicks on a grid.
 6. 'Draw' draws the currently selected symbol and redraws all symbols currently active in this session.
 7. 'Display Grid' button toggles the hashed grid outline on and off.
-8. 'Preview' button opens a new tab displaying your flowchart with the rendered SVG code. You can *save* this pure SVG code by using your browser's 'file/save as' menu - the 'file/save as' currently only works in Firefox due to differences in implementation.  
+8. 'Load' button retrieves a copy of the code from a file. The retrieved code is used to re-create a graph that you previously 'Save'd.
+9. 'Save' button saves a copy of the code used to create the flowchart in a file of your choice.
+10. 'Preview' button opens a new tab displaying your flowchart with the rendered SVG code. You can *save* this pure SVG code by using your browser's 'file/save as' menu - the 'file/save as' currently only works in Firefox due to differences in implementation.  
 
 Caution:  
 
