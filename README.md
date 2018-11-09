@@ -4,7 +4,7 @@
 HTML and Javascript routines to draw, preview and save/load a logic flowchart coded in the SVG XML language standard.  The project was developed to sample coding SVG with Javascript: there are far better open source software drawing packages.
 	
 **For the User**  
-Allows the user to generate standard logic flowchart symbols, connectors and flow lines. The user has the option to preview the finished product in a separate tab/window and save the SVG code that created the image to a local file for later display.  
+Allows the user to generate standard logic flowchart symbols, connectors and flow lines. The user can 'Save' their work for backup or a later "Load', to continue their development. The user has the option to preview the finished product in a separate tab/window and save the pure SVG code to a local .svg image file, for later display.  
 
 **For the Developer**:  
 The code contains numerous examples -  
@@ -125,7 +125,8 @@ Caution:  - The process does not contain extensive error catching code.
 5. UserInterface.png - A snapshot of a flowchart in progress: open with your favourite browser.
 6. ToDoList.txt - A "to do" list for developers, should they feel so inclined.
 7. LICENSE.txt - A text file describing the MIT open software license to which this project adheres.
-	
+8, sample.json - A json file containing the information required to re-create a "Save'ed" flowchart, during a "Load" operation.  
+
 ## Credits.
 - Admittedly, all software is collaborative. As far as I know, all software herein is open - source. 
 - I have endeavoured to credit the authour whenever I adapted their code for use here.
