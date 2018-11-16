@@ -124,8 +124,8 @@ Caution:  - The process does not contain extensive error catching code.
 4. Preview.svg - A sample SVG file: open with a browser of your choosing.
 5. UserInterface.png - A snapshot of a flowchart in progress: open with your favourite browser.
 6. ToDoList.txt - A "to do" list for developers, should they feel so inclined.
-7. LICENSE.txt - A text file describing the MIT open software license to which this project adheres.
-8, sample.json - A json file containing the information required to re-create a "Save'ed" flowchart, during a "Load" operation.  
+7. LICENSE.txt - A text file describing the MIT open software license to which this project adheres.  
+8. sample.json - A json file containing the information required to re-create a "Save'ed" flowchart, during a "Load" operation.  
 
 ## Credits.
 - Admittedly, all software is collaborative. As far as I know, all software herein is open - source. 
