@@ -7,6 +7,28 @@
 			{
 				margin: 0px;
 			}
+			#id_csSymbols td
+			{
+				text-align: right;
+			}
+			#id_text_lines input
+			{
+				width: 7em;
+			}
+			input:-moz-read-only 
+			{ /* For Firefox */
+				background-color: #d1d1d1;
+				text-align: center;
+				font-weight: bold;
+				width: 2em;
+			}
+			input:read-only
+			{
+				background-color: #d1d1d1;
+				text-align: center;
+				font-weight: bold;
+				width: 2em;
+			}
 			/***** For the Buttons *****/
 			label.btnLabel input[type="file"] 
 			{
@@ -1435,7 +1457,7 @@
 		</script>
 	</head>
 	<body onload='fncInit()'>
-		<div style='width: 50%;'>
+		<div style='width: 8in;'>
 			<h2 align='center'>Logic Flowchart Generator</h2>
 			<div>
 				Graph	
@@ -1471,24 +1493,24 @@
 			</div>
 			<div style="display: inline-block; width: 100%">
 				<p style="display: inline-block;">
-					Column <input type='text' size='2' id='id_column' readonly='readonly'/>
-					Row	<input type='text' size='2' id='id_row' readonly='readonly'/>
+					Column <input type='text'   id='id_column' readonly='readonly'/>
+					Row	<input type='text'  id='id_row' readonly='readonly'/>
 					<span id='id_span_text' style="display: inline;">
 						text	
 						<table id='id_text_lines' style="display: inline;">
 							<tr>
-								<td> <input type='text' size='15' maxlength='12' id='id_text_line_1' />
+								<td> <input type='text'  maxlength='12' id='id_text_line_1' /> </td>
 							</tr>
 							<tr>
-								<td> <input type='text' size='15' maxlength='12' id='id_text_line_2'  />
+								<td> <input type='text'  maxlength='12' id='id_text_line_2'  /> </td>
 							</tr>
 							<tr>
-								<td> <input type='text' size='15' maxlength='12' id='id_text_line_3'  />
+								<td> <input type='text'  maxlength='12' id='id_text_line_3'  /> </td>
 							</tr>
 						</table>
 					</span>
 					<span id='id_span_lines' style='display: none'>
-						<span  style="display: inline-table">
+						<span style="display: inline-table">
 							<select id='id_point' >
 							  <option value="R">Right</option>
 							  <option value="B">Bottom</option>
@@ -1499,11 +1521,11 @@
 						To: 
 						<span id='id_span_column2' style="display: inline">
 							Column 
-							<input type='text' size='2' id='id_column2' readonly='readonly' />
+							<input type='text'  id='id_column2' readonly='readonly' />
 						</span>
 						<span id='id_span_row2' style="display: inline">
 							Row	
-							<input type='text' size='2' id='id_row2' readonly='readonly'/>
+							<input type='text'  id='id_row2' readonly='readonly'/>
 						</span>
 						<span  style="display: inline-table">
 							<select id='id_point2' >
@@ -1515,48 +1537,50 @@
 						</span>
 					</span>
 					<span id='id_span_symbols' style="display: none;">
-						<span id='id_span_symbolS1' style="display: inline-table">
-							Right Symbol:
-							<select name='selectS' id='id_symbolR'>
-								<option value="blank" selected='true'>none</option>
-								<option value="yes">Yes</option>
-								<option value="no">No</option>
-								<option value="gt">&gt;</option>
-								<option value="lt">&lt;</option>
-								<option value="eq">=</option>
-								<option value="ne">&lt;&gt;</option>
-								<option value="ge">&gt;=</option>
-								<option value="le">&lt;=</option>
-							</select>
-						</span>
-						<span id='id_span_symbolS2' style="display: inline-table">
-							Bottom Symbol
-							<select name='selectS' id='id_symbolB'>
-								<option value="blank" selected='true'>none</option>
-								<option value="yes">Yes</option>
-								<option value="no">No</option>
-								<option value="gt">&gt;</option>
-								<option value="lt">&lt;</option>
-								<option value="eq">=</option>
-								<option value="ne">&lt;&gt;</option>
-								<option value="ge">&gt;=</option>
-								<option value="le">&lt;=</option>
-							</select>
-						</span>
-						<span id='id_span_symbolS3' style="display: inline-table">
-							LeftSymbol	
-							<select name='selectS' id='id_symbolL'>
-								<option value="blank" selected='true'>none</option>
-								<option value="yes">Yes</option>
-								<option value="no">No</option>
-								<option value="gt">&gt;</option>
-								<option value="lt">&lt;</option>
-								<option value="eq">=</option>
-								<option value="ne">&lt;&gt;</option>
-								<option value="ge">&gt;=</option>
-								<option value="le">&lt;=</option>
-							</select>
-						</span>
+						<table id='id_csSymbols' style="display: inline-table;"> 
+							<tr>
+								<td>Symbols Right:</td>
+								<td><select name='selectS' id='id_symbolR'>
+									<option value="blank" selected='true'>none</option>
+									<option value="yes">Yes</option>
+									<option value="no">No</option>
+									<option value="gt">&gt;</option>
+									<option value="lt">&lt;</option>
+									<option value="eq">=</option>
+									<option value="ne">&lt;&gt;</option>
+									<option value="ge">&gt;=</option>
+									<option value="le">&lt;=</option>
+								</select></td> 	
+							</tr>
+							<tr>
+								<td>Bottom:</td>
+								<td><select name='selectS' id='id_symbolB'>
+									<option value="blank" selected='true'>none</option>
+									<option value="yes">Yes</option>
+									<option value="no">No</option>
+									<option value="gt">&gt;</option>
+									<option value="lt">&lt;</option>
+									<option value="eq">=</option>
+									<option value="ne">&lt;&gt;</option>
+									<option value="ge">&gt;=</option>
+									<option value="le">&lt;=</option>
+								</select></td> 	
+							</tr>
+							<tr>
+								<td>Left:</td>
+								<td><select name='selectS' id='id_symbolL'>
+									<option value="blank" selected='true'>none</option>
+									<option value="yes">Yes</option>
+									<option value="no">No</option>
+									<option value="gt">&gt;</option>
+									<option value="lt">&lt;</option>
+									<option value="eq">=</option>
+									<option value="ne">&lt;&gt;</option>
+									<option value="ge">&gt;=</option>
+									<option value="le">&lt;=</option>
+								</select></td> 	
+							</tr>
+						</table>
 					</span>
 				</p>
 			</div>
